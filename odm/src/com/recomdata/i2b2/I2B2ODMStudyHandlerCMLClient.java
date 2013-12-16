@@ -60,8 +60,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 	public static void main(String[] args) {
 		try {
 			if (args.length == 0) {
-				System.out
-						.println("You must provide the path of an ODM file to process.");
+				System.out.println("You must provide the path of an ODM file to process.");
 				return;
 			}
 
@@ -70,16 +69,15 @@ public class I2B2ODMStudyHandlerCMLClient {
 			System.out.println("Initializing database connection...");
 
 			Config config = Config.getConfig();
-			I2B2DBUtils.init(config);
+//			I2B2DBUtils.init(config);
 
-			System.out.println("Loading ODM file " + odmFilename
-					+ " to i2b2...");
+			System.out.println("Loading ODM file " + odmFilename + " to i2b2...");
 
 			I2B2ODMStudyHandlerCMLClient client = new I2B2ODMStudyHandlerCMLClient();
 			client.loadODMFile2I2B2(odmFilename);
 
 			System.out.println("Releasing database connection...");
-			I2B2DBUtils.shutdown();
+//			I2B2DBUtils.shutdown();
 
 			System.out.println("Processing complete");
 		} catch (Exception ex) {

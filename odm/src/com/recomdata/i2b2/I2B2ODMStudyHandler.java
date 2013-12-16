@@ -126,7 +126,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 1 data
-		studyDao.insertMetadata(studyInfo);
+//		studyDao.insertMetadata(studyInfo);
+//        printStudyMetadata(studyInfo);
 
 		// save child events
 		ODMcomplexTypeDefinitionMetaDataVersion version = study.getMetaDataVersion().get(0);
@@ -141,9 +142,19 @@ public class I2B2ODMStudyHandler implements IConstants {
 		}
 	}
 
+    private void printStudyMetadata(final I2B2StudyInfo studyInfo) {
+        System.out.println("I2B2ODMStudyHandler.printStudyMetadata");
+        System.out.println(studyInfo.getChlevel());
+        System.out.println(studyInfo.getCfullname());
+        System.out.println(studyInfo.getCname());
+        System.out.println(studyInfo.getCsynonmCd());
+        System.out.println(studyInfo.getCvisualAttributes());
+        System.out.println(studyInfo.getCtotalNum());
+        System.out.println();
+    }
 
 
-	/**
+    /**
 	 * set up i2b2 metadate level 2 (Event) info into STUDY
 	 *
 	 * @throws JAXBException
@@ -172,7 +183,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 2 data
-		studyDao.insertMetadata(studyInfo);
+//		studyDao.insertMetadata(studyInfo);
 
 		if (studyEventDef.getFormRef() != null) {
 			for (ODMcomplexTypeDefinitionFormRef formRef : studyEventDef.getFormRef()) {
@@ -212,7 +223,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 3 data
-		studyDao.insertMetadata(studyInfo);
+//		studyDao.insertMetadata(studyInfo);
 
 
 		if (formDef.getItemGroupRef() != null) {
@@ -264,7 +275,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 4 data
-		studyDao.insertMetadata(studyInfo);
+//		studyDao.insertMetadata(studyInfo);
 
 		if (itemDef.getCodeListRef() != null) {
 			ODMcomplexTypeDefinitionCodeList codeList = ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
@@ -365,7 +376,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 		logStudyInfo();
 
-		studyDao.insertMetadata(studyInfo);
+//		studyDao.insertMetadata(studyInfo);
 	}
 
 	/**
@@ -411,7 +422,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		/*
 		 * Flush any remaining batched up records.
 		 */
-		studyDao.executeBatch();
+//		studyDao.executeBatch();
 	}
 
 	/*
@@ -432,7 +443,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		}
 
 		for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
-			clinicalDataDao.cleanupClinicalData(study.getOID(), odm.getSourceSystem());
+//			clinicalDataDao.cleanupClinicalData(study.getOID(), odm.getSourceSystem());
 		}
 
 		for (ODMcomplexTypeDefinitionClinicalData clinicalData : odm.getClinicalData()) {
@@ -491,7 +502,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			/*
 			 * Flush any remaining batched up observations;
 			 */
-			clinicalDataDao.executeBatch();
+//			clinicalDataDao.executeBatch();
 
 			long endTime = System.currentTimeMillis();
 			log.info("Completed Clinical data to i2b2 for study OID " + clinicalData.getStudyOID() + " in " + (endTime - startTime) + " ms");
@@ -579,15 +590,15 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// save observation
 		// into i2b2
 
-		try {
+//		try {
 		log.info("clinicalDataInfo: " + clinicalDataInfo);
-			clinicalDataDao.insertObservation(clinicalDataInfo);
-		} catch (SQLException e) {
-			String sError = "Error inserting observation_fact record.";
-			sError += " study: " + study.getOID();
-			sError += " item: " + itemData.getItemOID();
-			log.error(sError, e);
-		}
+//			clinicalDataDao.insertObservation(clinicalDataInfo);
+//		} catch (SQLException e) {
+//			String sError = "Error inserting observation_fact record.";
+//			sError += " study: " + study.getOID();
+//			sError += " item: " + itemData.getItemOID();
+//			log.error(sError, e);
+//		}
 	}
 
 	/**
@@ -604,10 +615,12 @@ public class I2B2ODMStudyHandler implements IConstants {
 		conceptBuffer.setLength(6);
 		conceptBuffer.append(studyOID).append("|");
 
-		messageDigest.update(odm.getSourceSystem().getBytes());
-		messageDigest.update((byte) '|');
-		messageDigest.update(studyEventOID.getBytes());
-		messageDigest.update((byte) '|');
+        if (odm.getSourceSystem() != null) {                                           // Ward
+            messageDigest.update(odm.getSourceSystem().getBytes());
+            messageDigest.update((byte) '|');
+        }
+        messageDigest.update(studyEventOID.getBytes());
+        messageDigest.update((byte) '|');
 		messageDigest.update(formOID.getBytes());
 		messageDigest.update((byte) '|');
 		messageDigest.update(itemOID.getBytes());

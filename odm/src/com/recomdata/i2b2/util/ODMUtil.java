@@ -138,10 +138,12 @@ public class ODMUtil {
 		
 		for (ODMcomplexTypeDefinitionTranslatedText translatedText :
 			codeListItem.getDecode().getTranslatedText()) {
-			if (translatedText.getLang().equals("en")) {
-				translatedValue = translatedText.getValue();
-				break;
-			}
+            if (translatedText.getLang() != null) {                                        // Ward
+                if (translatedText.getLang().equals("en")) {
+                    translatedValue = translatedText.getValue();
+                    break;
+                }
+            }
 		}
 	
 		if (translatedValue == null) {
