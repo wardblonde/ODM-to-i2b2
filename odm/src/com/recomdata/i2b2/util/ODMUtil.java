@@ -138,12 +138,11 @@ public class ODMUtil {
 		
 		for (ODMcomplexTypeDefinitionTranslatedText translatedText :
 			codeListItem.getDecode().getTranslatedText()) {
-            if (translatedText.getLang() != null) {                                        // Ward
-                if (translatedText.getLang().equals("en")) {
-                    translatedValue = translatedText.getValue();
-                    break;
-                }
-            }
+			// TODO: the language attribute is not always available for OpenClinica data.
+			if (translatedText.getLang() != null && translatedText.getLang().equals("en")) {
+				translatedValue = translatedText.getValue();
+				break;
+			}
 		}
 	
 		if (translatedValue == null) {

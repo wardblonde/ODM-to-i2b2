@@ -25,6 +25,16 @@ import com.recomdata.odm.ODMLoader;
  */
 public class I2B2ODMStudyHandlerCMLClient {
 	/**
+	 * Whether the export should go to the database (true) or to a file (false).
+	 */
+	public static final boolean EXPORT_TO_DATABASE = false;
+
+	/**
+	 * File path used for exporting to file (if EXPORT_TO_DATABASE is false).
+	 */
+	public static final String EXPORT_FILE_PATH = "C:\\Freek\\VUmc\\odm-to-i2b2.txt";
+
+	/**
 	 * method to process odm xml file and save data into i2b2
 	 * 
 	 * @param odmXmlPath
@@ -35,7 +45,6 @@ public class I2B2ODMStudyHandlerCMLClient {
 
 		if (!xml.exists()) {
 			throw new FileNotFoundException(xml.getPath());
-
 		}
 
 		// Load and parse ODM xml here by jaxb
@@ -48,14 +57,18 @@ public class I2B2ODMStudyHandlerCMLClient {
 		}
 
 		 // parse ODM XML and save as i2b2 metadata and demodata records
-		I2B2ODMStudyHandler odmHandler = new I2B2ODMStudyHandler(odm);
+		I2B2ODMStudyHandler odmHandler = new I2B2ODMStudyHandler(odm, EXPORT_TO_DATABASE);
 		odmHandler.processODM();
+
+		if (odmHandler.exportedToFile()) {
+			odmHandler.closeExportWriter();
+		}
 	}
 
 	/**
 	 * main method for command-line user
 	 * 
-	 * @param args
+	 * @param args command-line arguments
 	 */
 	public static void main(String[] args) {
 		try {
@@ -66,20 +79,23 @@ public class I2B2ODMStudyHandlerCMLClient {
 
 			String odmFilename = args[0];
 
-			System.out.println("Initializing database connection...");
-
-			Config config = Config.getConfig();
-//			I2B2DBUtils.init(config);
+			if (EXPORT_TO_DATABASE) {
+				System.out.println("Initializing database connection...");
+				Config config = Config.getConfig();
+				I2B2DBUtils.init(config);
+			}
 
 			System.out.println("Loading ODM file " + odmFilename + " to i2b2...");
 
 			I2B2ODMStudyHandlerCMLClient client = new I2B2ODMStudyHandlerCMLClient();
 			client.loadODMFile2I2B2(odmFilename);
 
-			System.out.println("Releasing database connection...");
-//			I2B2DBUtils.shutdown();
+			if (EXPORT_TO_DATABASE) {
+				System.out.println("Releasing database connection...");
+				I2B2DBUtils.shutdown();
+			}
 
-			System.out.println("Processing complete");
+			System.out.println("Processing complete.");
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
