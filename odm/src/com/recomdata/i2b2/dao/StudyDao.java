@@ -26,8 +26,8 @@ public class StudyDao implements IStudyDao {
 	private int metadataBatchCount = 100;
 	
 	public StudyDao() throws SQLException {
-//		Connection con = I2B2DBUtils.getI2B2DBConnection();
-//		insertMetadataStatement = con.prepareStatement(IStudyDao.INSERT_SQL);
+		Connection con = I2B2DBUtils.getI2B2DBConnection();
+		insertMetadataStatement = con.prepareStatement(IStudyDao.INSERT_SQL);
 	}
 
 	/**
@@ -79,10 +79,9 @@ public class StudyDao implements IStudyDao {
 	public void preSetupI2B2Study(String projectID, String sourceSystem) throws SQLException {
 		Date currentDate = I2B2DBUtils.getSQLDateFromUtilDate(Calendar.getInstance().getTime());
 
-//		deleteI2B2Study(projectID, sourceSystem);
+		deleteI2B2Study(projectID, sourceSystem);
 
-        //noinspection PointlessBooleanExpression,ConstantConditions
-        if (false && !checkI2B2Data(0, "\\STUDY\\")) {
+		if (!checkI2B2Data(0, "\\STUDY\\")) {
 			insertMetadataStatement.setInt(1, 0);
 			insertMetadataStatement.setString(2, "\\STUDY\\");
 			insertMetadataStatement.setString(3, "Study");

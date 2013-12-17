@@ -22,8 +22,8 @@ public class ClinicalDataDao implements IClinicalDataDao {
 	private PreparedStatement insertObservationStatement = null;
 
 	public ClinicalDataDao() throws SQLException {
-//		Connection con = I2B2DBUtils.getI2B2DBConnection();
-//		insertObservationStatement = con.prepareStatement(IClinicalDataDao.INSERT_OBSERV_FACT_SQL);
+		Connection con = I2B2DBUtils.getI2B2DBConnection();
+		insertObservationStatement = con.prepareStatement(IClinicalDataDao.INSERT_OBSERV_FACT_SQL);
 	}
 
 	/**
