@@ -27,7 +27,7 @@ public class ClinicalDataDao implements IClinicalDataDao {
 	}
 
 	/**
-	 * Method to delete records in observation_fact and concept_dimission
+	 * Method to delete records in observation_fact and concept_dimension
 	 */
 	public void cleanupClinicalData(String projectID, String sourceSystem) throws SQLException {
 		String conceptCodePattern = "STUDY|" + projectID + "|%";
