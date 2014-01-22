@@ -82,10 +82,12 @@ public class I2B2ODMStudyHandler implements IConstants {
 	 * Constructor to set ODM object
 	 *
 	 * @param odm Operational Data Model object
+	 * @param exportToDatabase whether to export to a database or to files.
+	 * @param exportFilePath the path of the export file.
 	 * @throws SQLException
 	 * @throws NoSuchAlgorithmException
 	 */
-	public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase) throws SQLException,
+	public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase, String exportFilePath) throws SQLException,
 			NoSuchAlgorithmException, IOException {
 		this.odm = odm;
 
@@ -96,8 +98,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 			exportWriter = null;
 		} else {
 			// Testing other export format.
-			exportWriter = new BufferedWriter(new FileWriter(I2B2ODMStudyHandlerCMLClient.EXPORT_FILE_PATH));
-			System.out.println("Writing export data to file " + I2B2ODMStudyHandlerCMLClient.EXPORT_FILE_PATH);
+			exportWriter = new BufferedWriter(new FileWriter(exportFilePath));
+			System.out.println("Writing export data to file " + exportFilePath);
 		}
 
 		studyInfo.setSourceSystemCd(odm.getSourceSystem());

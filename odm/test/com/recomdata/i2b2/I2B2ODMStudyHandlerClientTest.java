@@ -51,16 +51,17 @@ public class I2B2ODMStudyHandlerClientTest
 
 		String odmXmlPath = System.getProperty("odmpath");
 		Assert.assertNotNull(odmXmlPath);
-		
+		String exportFilePath = System.getProperty("exportpath");
+		Assert.assertNotNull(exportFilePath);
+
 		I2B2ODMStudyHandlerCMLClient client = new I2B2ODMStudyHandlerCMLClient();
 		
-		if((odmXmlPath != null) && (!odmXmlPath.equals(""))){
-			client.loadODMFile2I2B2(odmXmlPath);
+		if (!odmXmlPath.equals("") && !exportFilePath.equals("")) {
+			client.loadODMFile2I2B2(odmXmlPath, exportFilePath);
 		}
 
 		long end = System.currentTimeMillis();
 
 		Logger.getRootLogger().warn("Finish...[" + (end - start) / 1000.00 + "] secs");
-		
 	}
 }
