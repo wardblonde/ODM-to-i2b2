@@ -11,6 +11,7 @@ public class I2B2StudyInfo
 {
 	  int chlevel = 0;
 	  String cfullname = null;
+      String kpath = null;
 	  String cname = null;
 	  String csynonmCd = null;
 	  String cvisualAttributes = null;
@@ -44,18 +45,30 @@ public class I2B2StudyInfo
 	public void setChlevel(int chlevel) {
 		this.chlevel = chlevel;
 	}
-	/**
-	 * @return the cfullname
-	 */
-	public String getCfullname() {
-		return cfullname;
-	}
-	/**
-	 * @param cfullname the cfullname to set
-	 */
-	public void setCfullname(String cfullname) {
-		this.cfullname = cfullname;
-	}
+    /**
+     * @return the cfullname
+     */
+    public String getCfullname() {
+        return cfullname;
+    }
+    /**
+     * @param cfullname the cfullname to set
+     */
+    public void setCfullname(String cfullname) {
+        this.cfullname = cfullname;
+    }
+    /**
+     * @return the kpath
+     */
+    public String getKpath() {
+        return kpath;
+    }
+    /**
+     * @param kpath the kpath to set
+     */
+    public void setKpath(String kpath) {
+        this.kpath = kpath;
+    }
 	/**
 	 * @return the cname
 	 */
