@@ -127,7 +127,7 @@ public class I2B2ODMStudyHandler implements IConstants {
         final String className = studyInfo.getClass().getName();
         writeExportLine("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
         writeExportLine("+ " + studyInfo.getCfullname());
-        writeExportLine("+ " + studyInfo.getKpath());
+        writeExportLine("+ " + studyInfo.getNamePath());
         writeExportLine("+ " + studyInfo.getCname());
         writeExportLine("+ " + studyInfo.getCbasecode());
         writeExportLine("");
@@ -165,13 +165,13 @@ public class I2B2ODMStudyHandler implements IConstants {
 		String studyKey = odm.getSourceSystem() + ":" + study.getOID();
 
 		String studyPath = "\\" + "STUDY" + "\\" + studyKey + "\\";
-        String studyKPath = study.getGlobalVariables().getStudyName().getValue();
+        String studyNamePath = study.getGlobalVariables().getStudyName().getValue();
 		String studyToolTip = "STUDY" + "\\" + studyKey;
 
 		// set c_hlevel 1 data (Study)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_1);
 		studyInfo.setCfullname(studyPath);
-		studyInfo.setKpath(studyKPath);
+		studyInfo.setNamePath(studyNamePath);
 		studyInfo.setCname(study.getGlobalVariables().getStudyName().getValue());
 		studyInfo.setCsynonmCd(IConstants.C_SYNONYM_CD);
 		studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
@@ -205,7 +205,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 				ODMcomplexTypeDefinitionStudyEventDef studyEventDef =
 					ODMUtil.getStudyEvent(study, studyEventRef.getStudyEventOID());
 
-				saveEvent(study, studyEventDef, studyPath, studyKPath, studyToolTip);
+				saveEvent(study, studyEventDef, studyPath, studyNamePath, studyToolTip);
 			}
 		}
 	}
@@ -217,16 +217,16 @@ public class I2B2ODMStudyHandler implements IConstants {
 	 */
 	private void saveEvent(ODMcomplexTypeDefinitionStudy study,
 			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			String studyPath, String studyKPath, String studyToolTip) throws SQLException,
+			String studyPath, String studyNamePath, String studyToolTip) throws SQLException,
 			JAXBException {
 		String eventPath = studyPath + studyEventDef.getOID() + "\\";
-        String eventKPath = studyKPath + "+" + studyEventDef.getName();
+        String eventNamePath = studyNamePath + "+" + studyEventDef.getName();
 		String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 
 		// set c_hlevel 2 data (StudyEvent)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_2);
 		studyInfo.setCfullname(eventPath);
-		studyInfo.setKpath(eventKPath);
+		studyInfo.setNamePath(eventNamePath);
 		studyInfo.setCname(studyEventDef.getName());
 		studyInfo.setCdimcode(eventPath);
 		studyInfo.setCtooltip(eventToolTip);
