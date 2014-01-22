@@ -32,7 +32,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 	/**
 	 * File path used for exporting to file (if EXPORT_TO_DATABASE is false).
 	 */
-	public static final String EXPORT_FILE_PATH = "C:\\Freek\\VUmc\\odm-to-i2b2.txt";
+	public static final String EXPORT_FILE_PATH = "C:\\Ward\\2014\\workspace\\ODM-to-i2b2\\odm-to-i2b2.txt";
 
 	/**
 	 * method to process odm xml file and save data into i2b2
