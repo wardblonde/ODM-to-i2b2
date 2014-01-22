@@ -30,17 +30,13 @@ public class I2B2ODMStudyHandlerCMLClient {
 	public static final boolean EXPORT_TO_DATABASE = false;
 
 	/**
-	 * File path used for exporting to file (if EXPORT_TO_DATABASE is false).
-	 */
-	public static final String EXPORT_FILE_PATH = "C:\\Ward\\2014\\workspace\\ODM-to-i2b2\\odm-to-i2b2.txt";
-
-	/**
 	 * method to process odm xml file and save data into i2b2
 	 * 
-	 * @param odmXmlPath
+	 * @param odmXmlPath the ODM file to process.
+	 * @param exportFilePath the path of the export file.
 	 * @throws Exception
 	 */
-	public void loadODMFile2I2B2(String odmXmlPath) throws Exception {
+	public void loadODMFile2I2B2(String odmXmlPath, String exportFilePath) throws Exception {
 		File xml = new File(odmXmlPath);
 
 		if (!xml.exists()) {
@@ -57,7 +53,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 		}
 
 		 // parse ODM XML and save as i2b2 metadata and demodata records
-		I2B2ODMStudyHandler odmHandler = new I2B2ODMStudyHandler(odm, EXPORT_TO_DATABASE);
+		I2B2ODMStudyHandler odmHandler = new I2B2ODMStudyHandler(odm, EXPORT_TO_DATABASE, exportFilePath);
 		odmHandler.processODM();
 
 		if (odmHandler.exportedToFile()) {
@@ -72,12 +68,13 @@ public class I2B2ODMStudyHandlerCMLClient {
 	 */
 	public static void main(String[] args) {
 		try {
-			if (args.length == 0) {
-				System.out.println("You must provide the path of an ODM file to process.");
+			if (args.length < 2) {
+				System.out.println("Please provide the path of an ODM file to process and the path of the export file.");
 				return;
 			}
 
-			String odmFilename = args[0];
+			String odmFilePath = args[0];
+			String exportFilePath = args[1];
 
 			if (EXPORT_TO_DATABASE) {
 				System.out.println("Initializing database connection...");
@@ -85,10 +82,10 @@ public class I2B2ODMStudyHandlerCMLClient {
 				I2B2DBUtils.init(config);
 			}
 
-			System.out.println("Loading ODM file " + odmFilename + " to i2b2...");
+			System.out.println("Loading ODM file " + odmFilePath + " to i2b2...");
 
 			I2B2ODMStudyHandlerCMLClient client = new I2B2ODMStudyHandlerCMLClient();
-			client.loadODMFile2I2B2(odmFilename);
+			client.loadODMFile2I2B2(odmFilePath, exportFilePath);
 
 			if (EXPORT_TO_DATABASE) {
 				System.out.println("Releasing database connection...");
