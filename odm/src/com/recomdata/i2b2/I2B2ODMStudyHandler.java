@@ -6,10 +6,7 @@ package com.recomdata.i2b2;
  * @author: Alex Wu
  * @date: September 2, 2011
  */
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -21,6 +18,7 @@ import java.util.Date;
 import javax.xml.bind.JAXBException;
 
 import com.recomdata.i2b2.dao.*;
+import nl.vumc.odmtoi2b2.export.FileExporter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cdisk.odm.jaxb.ODM;
@@ -64,7 +62,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
 	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
-	private ExportFile exportFile = null;
+	private FileExporter fileExporter = null;
     private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
 
@@ -93,7 +91,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			clinicalDataDao = new ClinicalDataDao();
 		} else {
 			// Testing other export format.
-            exportFile = new ExportFile(exportFilePath);
+            fileExporter = new FileExporter(exportFilePath);
         }
 
 		studyInfo.setSourceSystemCd(odm.getSourceSystem());
@@ -143,7 +141,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			exportFile.writeExportStudyInfo(studyInfo);
+			fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		// save child events
@@ -194,7 +192,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			exportFile.writeExportStudyInfo(studyInfo);
+			fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		if (studyEventDef.getFormRef() != null) {
@@ -239,7 +237,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            exportFile.writeExportStudyInfo(studyInfo);
+            fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		if (formDef.getItemGroupRef() != null) {
@@ -295,7 +293,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            exportFile.writeExportStudyInfo(studyInfo);
+            fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		if (itemDef.getCodeListRef() != null) {
@@ -401,7 +399,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            exportFile.writeExportStudyInfo(studyInfo);
+            fileExporter.writeExportStudyInfo(studyInfo);
 		}
 	}
 
@@ -421,18 +419,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	// TODO: testing other export format.
 	public boolean exportedToFile() {
-		return exportFile.exportWriter != null;
-	}
-
-	// TODO: testing other export format.
-	public void closeExportWriter() {
-		if (exportFile.exportWriter != null) {
-			try {
-                exportFile.exportWriter.close();
-			} catch (final IOException e) {
-				e.printStackTrace();
-			}
-		}
+		return fileExporter != null;
 	}
 
 	/*
@@ -650,7 +637,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			if (clinicalDataDao != null) {
 				clinicalDataDao.insertObservation(clinicalDataInfo);
 			} else {
-                exportFile.writeExportClinicalDataInfo(clinicalDataInfo);
+                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);
 			}
 		} catch (SQLException e) {
 			String sError = "Error inserting observation_fact record.";
@@ -708,4 +695,10 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 		return conceptCode;
 	}
+
+
+    // TODO: testing other export format.
+    public void closeExportWriter() {
+        fileExporter.closeExportWriter();
+    }
 }
