@@ -20,6 +20,7 @@ import java.util.Date;
 
 import javax.xml.bind.JAXBException;
 
+import com.recomdata.i2b2.dao.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cdisk.odm.jaxb.ODM;
@@ -44,10 +45,6 @@ import org.cdisk.odm.jaxb.ODMcomplexTypeDefinitionStudyEventRef;
 import org.cdisk.odm.jaxb.ODMcomplexTypeDefinitionSubjectData;
 import org.cdisk.odm.jaxb.ODMcomplexTypeDefinitionTranslatedText;
 
-import com.recomdata.i2b2.dao.ClinicalDataDao;
-import com.recomdata.i2b2.dao.IClinicalDataDao;
-import com.recomdata.i2b2.dao.IStudyDao;
-import com.recomdata.i2b2.dao.StudyDao;
 import com.recomdata.i2b2.entity.I2B2ClinicalDataInfo;
 import com.recomdata.i2b2.entity.I2B2StudyInfo;
 import com.recomdata.i2b2.util.ODMUtil;
@@ -67,11 +64,10 @@ public class I2B2ODMStudyHandler implements IConstants {
 	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
 	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
-	private IStudyDao studyDao = null;
+	private ExportFile exportFile = null;
+    private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
 
-	// TODO: testing other export format.
-	private final BufferedWriter exportWriter;
 
 	private Date currentDate = null;
 	private MessageDigest messageDigest = null;
@@ -95,12 +91,10 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (exportToDatabase) {
 			studyDao = new StudyDao();
 			clinicalDataDao = new ClinicalDataDao();
-			exportWriter = null;
 		} else {
 			// Testing other export format.
-			exportWriter = new BufferedWriter(new FileWriter(exportFilePath));
-			System.out.println("Writing export data to file " + exportFilePath);
-		}
+            exportFile = new ExportFile(exportFilePath);
+        }
 
 		studyInfo.setSourceSystemCd(odm.getSourceSystem());
 		clinicalDataInfo.setSourcesystemCd(odm.getSourceSystem());
@@ -108,53 +102,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		currentDate = Calendar.getInstance().getTime();
 		messageDigest = MessageDigest.getInstance("MD5");
 	}
-
-    // TODO: testing other export format.
-    private void writeExportDataObject(final Object dataObject) {
-        final String className = dataObject.getClass().getName();
-        writeExportLine("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        try {
-            for (final Field field : dataObject.getClass().getDeclaredFields()) {
-                field.setAccessible(true);
-                writeExportLine("- " + field.getName() + ": " + field.get(dataObject));
-            }
-        } catch (final IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        writeExportLine("");
-    }
-
-    // TODO: testing other export format.
-    private void writeExportStudyInfo(final I2B2StudyInfo studyInfo) {
-        final String className = studyInfo.getClass().getName();
-        writeExportLine("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        writeExportLine("+ " + studyInfo.getCfullname());
-        writeExportLine("+ " + studyInfo.getNamePath());
-        writeExportLine("+ " + studyInfo.getCname());
-        writeExportLine("+ " + studyInfo.getCbasecode());
-        writeExportLine("");
-    }
-
-    // TODO: testing other export format.
-    private void writeExportClinicalDataInfo(final I2B2ClinicalDataInfo clinicalDataInfo) {
-        final String className = clinicalDataInfo.getClass().getName();
-        writeExportLine("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        writeExportLine("+ " + clinicalDataInfo.getPatientNum());
-        writeExportLine("+ " + clinicalDataInfo.getConceptCd());
-        writeExportLine("+ " + clinicalDataInfo.getTvalChar());
-        writeExportLine("");
-    }
-
-    // TODO: testing other export format.
-    private void writeExportLine(final String line) {
-        try {
-            exportWriter.write(line);
-            exportWriter.newLine();
-        } catch (final IOException e) {
-            e.printStackTrace();
-        }
-    }
-
 
     /**
 	 * set up i2b2 metadate level 1 (Study) info into STUDY
@@ -196,7 +143,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			writeExportStudyInfo(studyInfo);
+			exportFile.writeExportStudyInfo(studyInfo);
 		}
 
 		// save child events
@@ -247,7 +194,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			writeExportStudyInfo(studyInfo);
+			exportFile.writeExportStudyInfo(studyInfo);
 		}
 
 		if (studyEventDef.getFormRef() != null) {
@@ -292,7 +239,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			writeExportStudyInfo(studyInfo);
+            exportFile.writeExportStudyInfo(studyInfo);
 		}
 
 		if (formDef.getItemGroupRef() != null) {
@@ -348,7 +295,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			writeExportStudyInfo(studyInfo);
+            exportFile.writeExportStudyInfo(studyInfo);
 		}
 
 		if (itemDef.getCodeListRef() != null) {
@@ -454,7 +401,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-			writeExportStudyInfo(studyInfo);
+            exportFile.writeExportStudyInfo(studyInfo);
 		}
 	}
 
@@ -474,14 +421,14 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	// TODO: testing other export format.
 	public boolean exportedToFile() {
-		return exportWriter != null;
+		return exportFile.exportWriter != null;
 	}
 
 	// TODO: testing other export format.
 	public void closeExportWriter() {
-		if (exportWriter != null) {
+		if (exportFile.exportWriter != null) {
 			try {
-				exportWriter.close();
+                exportFile.exportWriter.close();
 			} catch (final IOException e) {
 				e.printStackTrace();
 			}
@@ -703,7 +650,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			if (clinicalDataDao != null) {
 				clinicalDataDao.insertObservation(clinicalDataInfo);
 			} else {
-				writeExportClinicalDataInfo(clinicalDataInfo);
+                exportFile.writeExportClinicalDataInfo(clinicalDataInfo);
 			}
 		} catch (SQLException e) {
 			String sError = "Error inserting observation_fact record.";
