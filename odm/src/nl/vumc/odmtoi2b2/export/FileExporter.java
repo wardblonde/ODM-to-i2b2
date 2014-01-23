@@ -1,9 +1,9 @@
-package nl.vumc.odmtoi2b2.export;
-
 /**
  * Copyright(c) 2014 VU University Medical Center.
  * Licensed under the MIT License (see http://opensource.org/licenses/MIT).
  */
+
+package nl.vumc.odmtoi2b2.export;
 
 import com.recomdata.i2b2.entity.I2B2ClinicalDataInfo;
 import com.recomdata.i2b2.entity.I2B2StudyInfo;
@@ -13,8 +13,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
-
-
 /**
  * This class supports exporting ODM data to files.
  *
@@ -22,9 +20,10 @@ import java.lang.reflect.Field;
  * @author <a href="mailto:f.debruijn@vumc.nl">Freek de Bruijn</a>
  */
 public class FileExporter {
-
+    /**
+     * The writer for exporting to file.
+     */
     private final BufferedWriter exportWriter;
-
 
     /**
      * Construct an export file.
@@ -35,7 +34,6 @@ public class FileExporter {
     public FileExporter(String exportFilePath) throws IOException  {
         exportWriter = new BufferedWriter(new FileWriter(exportFilePath));
         System.out.println("Writing export data to file " + exportFilePath);
-
     }
 
     /**
@@ -43,6 +41,7 @@ public class FileExporter {
      *
      * @param dataObject the data object that is prepared for loading to the database
      */
+    @SuppressWarnings("UnusedDeclaration")
     public void writeExportDataObject(final Object dataObject) {
         final String className = dataObject.getClass().getName();
         writeExportLine("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
@@ -58,7 +57,7 @@ public class FileExporter {
     }
 
     /**
-     * Write the metadata about study information to a columns file and a wordmap file.
+     * Write the metadata about study information to a columns file and a word map file.
      *
      * @param studyInfo the metadata study information
      */
@@ -104,15 +103,10 @@ public class FileExporter {
      * Close the export file.
      */
     public void closeExportWriter() {
-        if (exportWriter != null) {
-            try {
-                exportWriter.close();
-            } catch (final IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            exportWriter.close();
+        } catch (final IOException e) {
+            e.printStackTrace();
         }
     }
-
-
-
 }
