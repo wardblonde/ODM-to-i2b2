@@ -31,9 +31,10 @@ public class FileExporter {
      * @param exportFilePath the path to the export file.
      * @throws IOException when creating the file fails.
      */
-    public FileExporter(String exportFilePath) throws IOException  {
-        exportWriter = new BufferedWriter(new FileWriter(exportFilePath));
-        System.out.println("Writing export data to file " + exportFilePath);
+    public FileExporter(String exportFilePath, String exportFileName) throws IOException  {
+        String exportFile = exportFilePath + exportFileName;
+        exportWriter = new BufferedWriter(new FileWriter(exportFile));
+        System.out.println("Writing export data to file " + exportFile);
     }
 
     /**

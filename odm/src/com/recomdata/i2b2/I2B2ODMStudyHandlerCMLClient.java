@@ -57,7 +57,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 		odmHandler.processODM();
 
 		if (odmHandler.exportedToFile()) {
-			odmHandler.closeExportWriter();
+			odmHandler.closeExportWriters();
 		}
 	}
 
@@ -69,7 +69,8 @@ public class I2B2ODMStudyHandlerCMLClient {
 	public static void main(String[] args) {
 		try {
 			if (args.length < 2) {
-				System.out.println("Please provide the path of an ODM file to process and the path of the export file.");
+				System.out.println("Please provide the path of an ODM file to process " +
+                                   "and the path of the export directory (without slash).");
 				return;
 			}
 

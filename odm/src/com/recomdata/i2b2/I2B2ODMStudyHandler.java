@@ -58,11 +58,13 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	// initialize ODM object
 	private ODM odm = null;
+    private String exportFilePath = null;
 
 	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
 	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
 	private FileExporter fileExporter = null;
+	private FileExporter conceptMapExporter = null;
     private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
 
@@ -84,6 +86,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase, String exportFilePath) throws SQLException,
 			NoSuchAlgorithmException, IOException {
 		this.odm = odm;
+        this.exportFilePath = exportFilePath;
 
 		// TODO: create database or create other export format.
 		if (exportToDatabase) {
@@ -91,7 +94,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			clinicalDataDao = new ClinicalDataDao();
 		} else {
 			// Testing other export format.
-            fileExporter = new FileExporter(exportFilePath);
+            fileExporter = new FileExporter(exportFilePath, "\\odm-to-i2b2.txt");
         }
 
 		studyInfo.setSourceSystemCd(odm.getSourceSystem());
@@ -112,14 +115,14 @@ public class I2B2ODMStudyHandler implements IConstants {
 		String studyKey = odm.getSourceSystem() + ":" + study.getOID();
 
 		String studyPath = "\\" + "STUDY" + "\\" + studyKey + "\\";
-        String studyNamePath = study.getGlobalVariables().getStudyName().getValue();
+        String studyName = study.getGlobalVariables().getStudyName().getValue();
 		String studyToolTip = "STUDY" + "\\" + studyKey;
 
 		// set c_hlevel 1 data (Study)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_1);
 		studyInfo.setCfullname(studyPath);
-		studyInfo.setNamePath(studyNamePath);
-		studyInfo.setCname(study.getGlobalVariables().getStudyName().getValue());
+        studyInfo.setCname(studyName);
+		studyInfo.setNamePath(studyName);
 		studyInfo.setCsynonmCd(IConstants.C_SYNONYM_CD);
 		studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
 		studyInfo.setCfactTableColumn(IConstants.C_FACTTABLECOLUMN);
@@ -152,7 +155,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 				ODMcomplexTypeDefinitionStudyEventDef studyEventDef =
 					ODMUtil.getStudyEvent(study, studyEventRef.getStudyEventOID());
 
-				saveEvent(study, studyEventDef, studyPath, studyNamePath, studyToolTip);
+				saveEvent(study, studyEventDef, studyPath, studyName, studyToolTip);
 			}
 		}
 	}
@@ -167,14 +170,15 @@ public class I2B2ODMStudyHandler implements IConstants {
 			String studyPath, String studyNamePath, String studyToolTip) throws SQLException,
 			JAXBException {
 		String eventPath = studyPath + studyEventDef.getOID() + "\\";
-        String eventNamePath = studyNamePath + "+" + studyEventDef.getName();
+        String eventName = studyEventDef.getName();
+        String eventNamePath = studyNamePath + "+" + eventName;
 		String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 
 		// set c_hlevel 2 data (StudyEvent)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_2);
 		studyInfo.setCfullname(eventPath);
+        studyInfo.setCname(eventName);
 		studyInfo.setNamePath(eventNamePath);
-		studyInfo.setCname(studyEventDef.getName());
 		studyInfo.setCdimcode(eventPath);
 		studyInfo.setCtooltip(eventToolTip);
 
@@ -199,7 +203,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 			for (ODMcomplexTypeDefinitionFormRef formRef : studyEventDef.getFormRef()) {
 				ODMcomplexTypeDefinitionFormDef formDef = ODMUtil.getForm(study, formRef.getFormOID());
 
-				saveForm(study, studyEventDef, formDef, eventPath, eventToolTip);
+				saveForm(study, studyEventDef, formDef, eventPath, eventNamePath, eventToolTip);
 			}
 		}
 	}
@@ -211,15 +215,18 @@ public class I2B2ODMStudyHandler implements IConstants {
 	 */
 	private void saveForm(ODMcomplexTypeDefinitionStudy study,
 			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			ODMcomplexTypeDefinitionFormDef formDef, String eventPath,
+			ODMcomplexTypeDefinitionFormDef formDef, String eventPath, String eventNamePath,
 			String eventToolTip) throws SQLException, JAXBException {
 		String formPath = eventPath + formDef.getOID() + "\\";
+        String formName = getTranslatedDescription(formDef.getDescription(), "en", formDef.getName());
+        String formNamePath = eventNamePath + "+" + formName;
 		String formToolTip = eventToolTip + "\\" + formDef.getOID();
 
 		// set c_hlevel 3 data (Form)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_3);
 		studyInfo.setCfullname(formPath);
-		studyInfo.setCname(getTranslatedDescription(formDef.getDescription(), "en", formDef.getName()));
+		studyInfo.setCname(formName);
+		studyInfo.setNamePath(formNamePath);
 		studyInfo.setCdimcode(formPath);
 		studyInfo.setCtooltip(formToolTip);
 
@@ -249,7 +256,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 					for (ODMcomplexTypeDefinitionItemRef itemRef : itemGroupDef.getItemRef()) {
 						ODMcomplexTypeDefinitionItemDef itemDef = ODMUtil.getItem(study, itemRef.getItemOID());
 
-						saveItem(study, studyEventDef, formDef, itemDef, formPath, formToolTip);
+						saveItem(study, studyEventDef, formDef, itemDef, formPath, formNamePath, formToolTip);
 					}
 				}
 			}
@@ -265,15 +272,18 @@ public class I2B2ODMStudyHandler implements IConstants {
 	private void saveItem(ODMcomplexTypeDefinitionStudy study,
 			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
 			ODMcomplexTypeDefinitionFormDef formDef,
-			ODMcomplexTypeDefinitionItemDef itemDef, String formPath,
+			ODMcomplexTypeDefinitionItemDef itemDef, String formPath, String formNamePath,
 			String formToolTip) throws SQLException, JAXBException {
 		String itemPath = formPath + itemDef.getOID() + "\\";
+        String itemName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName());
+        String itemNamePath = formNamePath + "+" + itemName;
 		String itemToolTip = formToolTip + "\\" + itemDef.getOID();
 
 		// set c_hlevel 4 data (Items)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_4);
 		studyInfo.setCfullname(itemPath);
-		studyInfo.setCname(getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()));
+		studyInfo.setCname(itemName);
+		studyInfo.setNamePath(itemNamePath);
 		studyInfo.setCbasecode(generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(), itemDef.getOID(), null));
 		studyInfo.setCdimcode(itemPath);
 		studyInfo.setCtooltip(itemToolTip);
@@ -303,7 +313,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 				for (ODMcomplexTypeDefinitionCodeListItem codeListItem : codeList.getCodeListItem()) {
 					// save
 					// level 5
-					saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemToolTip);
+					saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemNamePath, itemToolTip);
 				}
 			}
 		}
@@ -375,10 +385,13 @@ public class I2B2ODMStudyHandler implements IConstants {
 			ODMcomplexTypeDefinitionFormDef formDef,
 			ODMcomplexTypeDefinitionItemDef itemDef,
 			ODMcomplexTypeDefinitionCodeListItem codeListItem, String itemPath,
+            String itemNamePath,
 			String itemToolTip) throws SQLException {
 		String value = ODMUtil.getTranslatedValue(codeListItem, "en");
 		String codedValue = codeListItem.getCodedValue();
 		String codeListItemPath = itemPath + codedValue + "\\";
+        String codeListName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()) + ": " + value;
+        String codeListNamePath = itemNamePath + "+" + codeListName;
 		String codeListItemToolTip = itemToolTip + "\\"	+ value;
 
 
@@ -386,7 +399,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// set c_hlevel 5 data (TranslatedText)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_5);
 		studyInfo.setCfullname(codeListItemPath);
-		studyInfo.setCname(getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()) + ": " + value);
+		studyInfo.setCname(codeListName);
+		studyInfo.setNamePath(codeListNamePath);
 		studyInfo.setCbasecode(generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(), itemDef.getOID(), codedValue));
 		studyInfo.setCdimcode(codeListItemPath);
 		studyInfo.setCtooltip(codeListItemToolTip);
@@ -409,7 +423,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	 * @throws JAXBException
 	 * @throws ParseException
 	 */
-	public void processODM() throws SQLException, JAXBException, ParseException {
+	public void processODM() throws SQLException, JAXBException, ParseException, IOException {
 		log.info("Start to parse ODM xml and save to i2b2");
 
 		// build the call
@@ -427,7 +441,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	 * then traverses through ODM tree object and save data into i2b2 metadata
 	 * database in i2b2 data format.
 	 */
-	public void processODMStudy() throws SQLException, JAXBException {
+	public void processODMStudy() throws SQLException, JAXBException, IOException {
 		/*
 		 * Need to traverse through the study definition to: 1) Lookup all
 		 * definition values in tree nodes. 2) Set node values into i2b2 bean
@@ -445,7 +459,11 @@ public class I2B2ODMStudyHandler implements IConstants {
 			log.info("Inserting study metadata into i2b2");
 			long startTime = System.currentTimeMillis();
 
-			saveStudy(study);
+            conceptMapExporter = new FileExporter(exportFilePath, "\\" + study.getGlobalVariables().getStudyName().getValue() + "_concept_map.txt");
+
+            saveStudy(study);
+
+            conceptMapExporter.closeExportWriter();
 
 			long endTime = System.currentTimeMillis();
 			log.info("Completed loading study metadata into i2b2 in " + (endTime - startTime) + " ms");
@@ -698,7 +716,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 
     // TODO: testing other export format.
-    public void closeExportWriter() {
+    public void closeExportWriters() {
         fileExporter.closeExportWriter();
     }
 }
