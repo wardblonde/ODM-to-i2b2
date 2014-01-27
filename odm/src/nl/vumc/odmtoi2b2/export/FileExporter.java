@@ -28,7 +28,8 @@ public class FileExporter {
     /**
      * Construct an export file.
      *
-     * @param exportFilePath the path to the export file.
+     * @param exportFilePath the path to the directory of the export file.
+     * @param exportFileName the name of the export file
      * @throws IOException when creating the file fails.
      */
     public FileExporter(String exportFilePath, String exportFileName) throws IOException  {
@@ -70,6 +71,18 @@ public class FileExporter {
         writeExportLine("+ " + studyInfo.getCname());
         writeExportLine("+ " + studyInfo.getCbasecode());
         writeExportLine("");
+    }
+
+    /**
+     * Write the concept mapping in two columns. The first column represents the tree structure as it will
+     * appear in i2b2, the second column is the original tree structure from the ODM. Concepts are separated
+     * by + symbols.
+     *
+     * @param studyInfo the metadata study information
+     */
+    public void writeConceptMap(final I2B2StudyInfo studyInfo) {
+        //writeExportLine(studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
+        writeExportLine(studyInfo.getCname());
     }
 
     /**
