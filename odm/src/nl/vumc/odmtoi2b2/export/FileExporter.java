@@ -1,6 +1,6 @@
 /**
  * Copyright(c) 2014 VU University Medical Center.
- * Licensed under the MIT License (see http://opensource.org/licenses/MIT).
+ * Licensed under the Apache License version 2.0 (see http://opensource.org/licenses/Apache-2.0).
  */
 
 package nl.vumc.odmtoi2b2.export;
