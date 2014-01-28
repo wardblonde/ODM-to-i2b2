@@ -58,13 +58,12 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	// initialize ODM object
 	private ODM odm = null;
-    private String exportFilePath = null;
 
 	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
 	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
+    private String exportFilePath;
 	private FileExporter fileExporter = null;
-	private FileExporter conceptMapExporter = null;
     private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
 
@@ -92,9 +91,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (exportToDatabase) {
 			studyDao = new StudyDao();
 			clinicalDataDao = new ClinicalDataDao();
-		} else {
-			// Testing other export format.
-            fileExporter = new FileExporter(exportFilePath, "\\odm-to-i2b2.txt");
         }
 
 		studyInfo.setSourceSystemCd(odm.getSourceSystem());
@@ -161,7 +157,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	}
 
     /**
-	 * set up i2b2 metadate level 2 (Event) info into STUDY
+	 * set up i2b2 metadata level 2 (Event) info into STUDY
 	 *
 	 * @throws JAXBException
 	 */
@@ -209,7 +205,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	}
 
 	/**
-	 * set up i2b2 metadate level 3 (Form) info into STUDY
+	 * set up i2b2 metadata level 3 (Form) info into STUDY
 	 *
 	 * @throws JAXBException
 	 */
@@ -264,7 +260,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	}
 
 	/**
-	 * set up i2b2 metadate level 4 (Item) info into STUDY and CONCEPT_DIMENSION
+	 * set up i2b2 metadata level 4 (Item) info into STUDY and CONCEPT_DIMENSION
 	 *
 	 * @throws SQLException
 	 * @throws JAXBException
@@ -303,8 +299,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            fileExporter.writeExportStudyInfo(studyInfo);
-            conceptMapExporter.writeConceptMap(studyInfo);
+            fileExporter.writeExportStudyInfo(studyInfo, true);
 		}
 
 		if (itemDef.getCodeListRef() != null) {
@@ -427,9 +422,14 @@ public class I2B2ODMStudyHandler implements IConstants {
 	public void processODM() throws SQLException, JAXBException, ParseException, IOException {
 		log.info("Start to parse ODM xml and save to i2b2");
 
+        // Testing other export format.
+        fileExporter = new FileExporter(exportFilePath + "\\", "clinical_data.txt");
+
 		// build the call
 		processODMStudy();
 		processODMClinicalData();
+
+        fileExporter.close();
 	}
 
 	// TODO: testing other export format.
@@ -460,11 +460,9 @@ public class I2B2ODMStudyHandler implements IConstants {
 			log.info("Inserting study metadata into i2b2");
 			long startTime = System.currentTimeMillis();
 
-            conceptMapExporter = new FileExporter(exportFilePath, "\\" + study.getGlobalVariables().getStudyName().getValue() + "_concept_map.txt");
+            fileExporter.setConceptMapName(study.getGlobalVariables().getStudyName().getValue() + "_concept_map.txt");
 
             saveStudy(study);
-
-            conceptMapExporter.closeExportWriter();
 
 			long endTime = System.currentTimeMillis();
 			log.info("Completed loading study metadata into i2b2 in " + (endTime - startTime) + " ms");
@@ -702,7 +700,9 @@ public class I2B2ODMStudyHandler implements IConstants {
 			conceptBuffer.append(Integer.toHexString(0xFF & digest[i]));
 		}
 
-		String conceptCode = conceptBuffer.toString();
+        //String conceptCode = conceptBuffer.toString();                                                   //Ward
+        String conceptCode = studyOID + "+" + studyEventOID + "+" + formOID + "+" + itemOID /*+ "+" + value*/; //Ward
+
 		if (log.isDebugEnabled()) {
 			log.debug(new StringBuffer("Concept code ").append(conceptCode)
 					.append(" generated for studyOID=").append(studyOID)
@@ -718,6 +718,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 
     // TODO: testing other export format.
     public void closeExportWriters() {
-        fileExporter.closeExportWriter();
+        fileExporter.close();
     }
 }
