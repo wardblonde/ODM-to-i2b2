@@ -117,7 +117,7 @@ public class FileExporter {
      */
     public void writeExportStudyInfo(I2B2StudyInfo studyInfo, boolean addToConceptMap) {
         if (addToConceptMap) {
-            writeConceptMap(studyInfo);
+            writeExportConceptMap(studyInfo);
         }
 
         String className = studyInfo.getClass().getName();
@@ -166,13 +166,34 @@ public class FileExporter {
     }
 
     /**
+     * Write the columns file: first the clinical data file name, then the path as specified in the second
+     * column of the user's input concept map without the last node, then the column number and then the
+     * last node of the path
+     *
+     * @param studyInfo the metadata study information
+     */
+    public void writeExportColumns(I2B2StudyInfo studyInfo) {
+        writeLine(columnsWriter, "Filename\tCategory Code\tColumn Number\tData Label\tData Label Source\tControl Vocab Cd");
+    }
+
+    /**
+     * Write the word mapping file: first the clinical data file name, then the column number, then the data value,
+     * and then the mapped word
+     *
+     * @param studyInfo the metadata study information
+     */
+    public void writeExportWordMap(I2B2StudyInfo studyInfo) {
+        writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
+    }
+
+    /**
      * Write the concept mapping in two columns. The first column represents the tree structure as it will
      * appear in i2b2, the second column is the original tree structure from the ODM. Concepts are separated
      * by + symbols.
      *
      * @param studyInfo the metadata study information
      */
-    private void writeConceptMap(I2B2StudyInfo studyInfo) {
+    private void writeExportConceptMap(I2B2StudyInfo studyInfo) {
         writeLine(conceptMapWriter, studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
         columnHeaders.add(studyInfo.getCname());
         columnIds.add(studyInfo.getNamePath());
@@ -244,8 +265,10 @@ public class FileExporter {
     public void close() {
         try {
             writePatientData();
-            clinicalDataWriter.close();
+            columnsWriter.close();
+            wordMapWriter.close();
             conceptMapWriter.close();
+            clinicalDataWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

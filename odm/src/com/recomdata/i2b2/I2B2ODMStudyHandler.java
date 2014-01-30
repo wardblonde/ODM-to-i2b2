@@ -427,6 +427,10 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 		// build the call
 		processODMStudy();
+
+        fileExporter.writeExportColumns(studyInfo);
+        fileExporter.writeExportWordMap(studyInfo);
+
 		processODMClinicalData();
 
         fileExporter.close();
