@@ -460,7 +460,10 @@ public class I2B2ODMStudyHandler implements IConstants {
 			log.info("Inserting study metadata into i2b2");
 			long startTime = System.currentTimeMillis();
 
+            fileExporter.setColumnsName(study.getGlobalVariables().getStudyName().getValue() + "_columns.txt");
+            fileExporter.setWordMapName(study.getGlobalVariables().getStudyName().getValue() + "_word_map.txt");
             fileExporter.setConceptMapName(study.getGlobalVariables().getStudyName().getValue() + "_concept_map.txt");
+            fileExporter.setClinicalDataName(study.getGlobalVariables().getStudyName().getValue() + "_clinical_data.txt");
 
             saveStudy(study);
 

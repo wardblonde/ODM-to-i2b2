@@ -37,19 +37,30 @@ public class FileExporter {
     private final String exportFilePath;
 
     /**
-     * The writer for exporting the clinical data.
+     * The writer for writing the columns file.
      */
-    private final BufferedWriter clinicalDataWriter;
+    private BufferedWriter columnsWriter;
+
+    /**
+     * The writer for writing the word map file.
+     */
+    private BufferedWriter wordMapWriter;
+
+    /**
+     * The writer for writing the concept map file.
+     */
+    private BufferedWriter conceptMapWriter;
+
+    /**
+     * The writer for exporting the clinical data file.
+     */
+
+    private BufferedWriter clinicalDataWriter;
 
     /**
      * Whether the line with the clinical data headers still has to be written to file.
      */
     private boolean writeClinicalDataHeaders;
-
-    /**
-     * The writer for writing the concept map.
-     */
-    private BufferedWriter conceptMapWriter;
 
     /**
      * The column headers for the clinical data.
@@ -82,7 +93,7 @@ public class FileExporter {
     public FileExporter(String exportFilePath, String exportFileName) throws IOException {
         this.exportFilePath = exportFilePath;
         String exportFile = exportFilePath + exportFileName;
-        clinicalDataWriter = new BufferedWriter(new FileWriter(exportFile));
+        //clinicalDataWriter = new BufferedWriter(new FileWriter(exportFile));
         writeClinicalDataHeaders = true;
         log.info("Writing export data to file " + exportFile);
         columnHeaders = new ArrayList<>();
@@ -119,10 +130,37 @@ public class FileExporter {
         log.info("");
     }
 
+    public void setColumnsName(String columnsFileName) {
+        try {
+            clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + columnsFileName));
+            log.info("Writing clinical data to file " + exportFilePath + columnsFileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setWordMapName(String wordMapFileName) {
+        try {
+            clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + wordMapFileName));
+            log.info("Writing clinical data to file " + exportFilePath + wordMapFileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void setConceptMapName(String conceptMapFileName) {
         try {
             conceptMapWriter = new BufferedWriter(new FileWriter(exportFilePath + conceptMapFileName));
             log.info("Writing concept map to file " + exportFilePath + conceptMapFileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setClinicalDataName(String clinicalDataFileName) {
+        try {
+            clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + clinicalDataFileName));
+            log.info("Writing clinical data to file " + exportFilePath + clinicalDataFileName);
         } catch (IOException e) {
             e.printStackTrace();
         }
