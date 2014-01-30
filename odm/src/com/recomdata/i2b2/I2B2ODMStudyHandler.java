@@ -8,7 +8,6 @@ package com.recomdata.i2b2;
  */
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -69,8 +68,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 
 	private Date currentDate = null;
-	private MessageDigest messageDigest = null;
-	private StringBuffer conceptBuffer = new StringBuffer("STUDY|");
+//	private MessageDigest messageDigest = null;
+//	private StringBuffer conceptBuffer = new StringBuffer("STUDY|");
 	private MetaDataXML mdx = new MetaDataXML();
 
 	/**
@@ -97,11 +96,11 @@ public class I2B2ODMStudyHandler implements IConstants {
 		clinicalDataInfo.setSourcesystemCd(odm.getSourceSystem());
 
 		currentDate = Calendar.getInstance().getTime();
-		messageDigest = MessageDigest.getInstance("MD5");
+//		messageDigest = MessageDigest.getInstance("MD5");
 	}
 
     /**
-	 * set up i2b2 metadate level 1 (Study) info into STUDY
+	 * set up i2b2 metadata level 1 (Study) info into STUDY
 	 *
 	 * @throws JAXBException
 	 */
@@ -372,7 +371,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	}
 
 	/**
-	 * set up i2b2 metadate level 5 (TranslatedText) info into STUDY
+	 * set up i2b2 metadata level 5 (TranslatedText) info into STUDY
 	 *
 	 * @throws SQLException
 	 */
@@ -487,14 +486,14 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	/*
 	 * This method takes ODM XML io.File obj as input and parsed by JAXB API and
-	 * thentraversal through ODM tree object and save clinical data into i2b2
-	 * demo database ini2b2 data format. Keep method public in case of only want
+	 * the traversal through ODM tree object and save clinical data into i2b2
+	 * demo database in i2b2 data format. Keep method public in case of only want
 	 * to parse demodata.
 	 */
 	public void processODMClinicalData() throws JAXBException, ParseException, SQLException {
 		log.info("Parse and save ODM clinical data into i2b2...");
 
-		// travese through the clinical data to:
+		// Traverse through the clinical data to:
 		// 1) Lookup the concept path from odm study metadata.
 		// 2) Set patient and clinical information into observation fact.
 		if (odm.getClinicalData() == null && odm.getClinicalData().size() == 0) {
@@ -554,7 +553,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 							for (ODMcomplexTypeDefinitionItemData itemData : itemGroupData.getItemDataGroup()) {
 								if (itemData.getValue() != null) {
-									saveItemData(study, clinicalData, subjectData, studyEventData, formData, itemData, encounterNum);
+									saveItemData(study, subjectData, studyEventData, formData, itemData, encounterNum);
 								}
 							}
 						}
@@ -572,7 +571,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 			long endTime = System.currentTimeMillis();
 			log.info("Completed Clinical data to i2b2 for study OID " + clinicalData.getStudyOID() + " in " + (endTime - startTime) + " ms");
-
 		}
 	}
 
@@ -584,7 +582,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 	private void saveItemData(
 			ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionClinicalData clinicalData,
 			ODMcomplexTypeDefinitionSubjectData subjectData,
 			ODMcomplexTypeDefinitionStudyEventData studyEventData,
 			ODMcomplexTypeDefinitionFormData formData,
@@ -594,7 +591,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		String itemValue = itemData.getValue();
 		ODMcomplexTypeDefinitionItemDef item = ODMUtil.getItem(study, itemData.getItemOID());
 
-		String conceptCd = null;
+		String conceptCd;
 
 		if (item.getCodeListRef() != null) {
 			clinicalDataInfo.setValTypeCd("T");
@@ -673,42 +670,43 @@ public class I2B2ODMStudyHandler implements IConstants {
 	}
 
 	/**
-	 * Create concept code with all oids and make the total length less than 50
+	 * Create concept code with all OIDs and make the total length less than 50
 	 * and unique
 	 *
-	 * @param studyEventOID
-	 * @param formOID
-	 * @param itemOID
-	 * @return
+	 * @param studyEventOID the study event identifier.
+	 * @param formOID the form identifier.
+	 * @param itemOID  the item identifier.
+	 * @return the concept code for this item.
 	 */
 	private String generateConceptCode(String studyOID, String studyEventOID,
 			String formOID, String itemOID, String value) {
-		conceptBuffer.setLength(6);
-		conceptBuffer.append(studyOID).append("|");
+//		conceptBuffer.setLength(6);
+//		conceptBuffer.append(studyOID).append("|");
+//
+//		// TODO: the source system can be null?
+//        if (odm.getSourceSystem() != null) {
+//            messageDigest.update(odm.getSourceSystem().getBytes());
+//            messageDigest.update((byte) '|');
+//        }
+//        messageDigest.update(studyEventOID.getBytes());
+//        messageDigest.update((byte) '|');
+//		messageDigest.update(formOID.getBytes());
+//		messageDigest.update((byte) '|');
+//		messageDigest.update(itemOID.getBytes());
+//
+//		if (value != null) {
+//			messageDigest.update((byte) '|');
+//			messageDigest.update(value.getBytes());
+//		}
+//
+//		byte[] digest = messageDigest.digest();
+//
+//		for (int i = 0; i < digest.length; i++) {
+//			conceptBuffer.append(Integer.toHexString(0xFF & digest[i]));
+//		}
+//
+//        String conceptCode = conceptBuffer.toString();                                                   //Ward
 
-		// TODO: the source system can be null?
-        if (odm.getSourceSystem() != null) {
-            messageDigest.update(odm.getSourceSystem().getBytes());
-            messageDigest.update((byte) '|');
-        }
-        messageDigest.update(studyEventOID.getBytes());
-        messageDigest.update((byte) '|');
-		messageDigest.update(formOID.getBytes());
-		messageDigest.update((byte) '|');
-		messageDigest.update(itemOID.getBytes());
-
-		if (value != null) {
-			messageDigest.update((byte) '|');
-			messageDigest.update(value.getBytes());
-		}
-
-		byte[] digest = messageDigest.digest();
-
-		for (int i = 0; i < digest.length; i++) {
-			conceptBuffer.append(Integer.toHexString(0xFF & digest[i]));
-		}
-
-        //String conceptCode = conceptBuffer.toString();                                                   //Ward
         String conceptCode = studyOID + "+" + studyEventOID + "+" + formOID + "+" + itemOID /*+ "+" + value*/; //Ward
 
 		if (log.isDebugEnabled()) {
