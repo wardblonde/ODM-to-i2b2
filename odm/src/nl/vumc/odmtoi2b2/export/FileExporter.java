@@ -7,6 +7,8 @@ package nl.vumc.odmtoi2b2.export;
 
 import com.recomdata.i2b2.entity.I2B2ClinicalDataInfo;
 import com.recomdata.i2b2.entity.I2B2StudyInfo;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -25,11 +27,15 @@ import java.util.Map;
  */
 public class FileExporter {
     /**
+     * Logger for this class.
+     */
+    private static final Log log = LogFactory.getLog(FileExporter.class);
+
+    /**
      * The writer for writing the clinical data.
      */
     private final BufferedWriter clinicalDataWriter;
     private boolean writeClinicalDataHeaders;
-    private final BufferedWriter logWriter;
 
     private final String exportFilePath;
 
@@ -54,13 +60,12 @@ public class FileExporter {
         String exportFile = exportFilePath + exportFileName;
         clinicalDataWriter = new BufferedWriter(new FileWriter(exportFile));
         writeClinicalDataHeaders = true;
-        logWriter = new BufferedWriter(new FileWriter(exportFilePath + "log.txt"));
         this.exportFilePath = exportFilePath;
         System.out.println("Writing export data to file " + exportFile);
         System.out.println("Writing logging to file " + exportFilePath + "log.txt");
-        columnHeaders = new ArrayList<String>();
-        columnIds = new ArrayList<String>();
-        patientData = new HashMap<String, String>();
+        columnHeaders = new ArrayList<>();
+        columnIds = new ArrayList<>();
+        patientData = new HashMap<>();
     }
 
     /**
@@ -84,12 +89,12 @@ public class FileExporter {
         }
 
         final String className = studyInfo.getClass().getName();
-        writeLine(logWriter, "[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        writeLine(logWriter, "+ " + studyInfo.getCfullname());
-        writeLine(logWriter, "+ " + studyInfo.getNamePath());
-        writeLine(logWriter, "+ " + studyInfo.getCname());
-        writeLine(logWriter, "+ " + studyInfo.getCbasecode());
-        writeLine(logWriter, "");
+        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
+        log.info("+ " + studyInfo.getCfullname());
+        log.info("+ " + studyInfo.getNamePath());
+        log.info("+ " + studyInfo.getCname());
+        log.info("+ " + studyInfo.getCbasecode());
+        log.info("");
     }
 
     /**
@@ -113,11 +118,11 @@ public class FileExporter {
      */
     public void writeExportClinicalDataInfo(final I2B2ClinicalDataInfo clinicalDataInfo) {
         final String className = clinicalDataInfo.getClass().getName();
-        writeLine(logWriter, "[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        writeLine(logWriter, "+ " + clinicalDataInfo.getPatientNum());
-        writeLine(logWriter, "+ " + clinicalDataInfo.getConceptCd());
-        writeLine(logWriter, "+ " + clinicalDataInfo.getTvalChar());
-        writeLine(logWriter, "");
+        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
+        log.info("+ " + clinicalDataInfo.getPatientNum());
+        log.info("+ " + clinicalDataInfo.getConceptCd());
+        log.info("+ " + clinicalDataInfo.getTvalChar());
+        log.info("");
 
         if (!clinicalDataInfo.getPatientNum().equals(currentPatientNumber)) {
             writePatientData();
@@ -174,7 +179,6 @@ public class FileExporter {
             writePatientData();
             clinicalDataWriter.close();
             conceptMapWriter.close();
-            logWriter.close();
         } catch (final IOException e) {
             e.printStackTrace();
         }
@@ -188,16 +192,16 @@ public class FileExporter {
     @SuppressWarnings("UnusedDeclaration")
     public void writeExportDataObject(final Object dataObject) {
         final String className = dataObject.getClass().getName();
-        writeLine(logWriter, "[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
+        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
         try {
             for (final Field field : dataObject.getClass().getDeclaredFields()) {
                 field.setAccessible(true);
-                writeLine(logWriter, "- " + field.getName() + ": " + field.get(dataObject));
+                log.info("- " + field.getName() + ": " + field.get(dataObject));
             }
         } catch (final IllegalAccessException e) {
             e.printStackTrace();
         }
-        writeLine(logWriter, "");
+        log.info("");
     }
 
     public void setConceptMapName(final String conceptMapFileName) {
