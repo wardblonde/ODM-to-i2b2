@@ -37,6 +37,11 @@ public class FileExporter {
     private final String exportFilePath;
 
     /**
+     * The writer for writing the concept map file.
+     */
+    private BufferedWriter conceptMapWriter;
+
+    /**
      * The writer for writing the columns file.
      */
     private BufferedWriter columnsWriter;
@@ -45,11 +50,6 @@ public class FileExporter {
      * The writer for writing the word map file.
      */
     private BufferedWriter wordMapWriter;
-
-    /**
-     * The writer for writing the concept map file.
-     */
-    private BufferedWriter conceptMapWriter;
 
     /**
      * The writer for exporting the clinical data file.
@@ -100,35 +100,6 @@ public class FileExporter {
         patientData = new HashMap<>();
     }
 
-    /**
-     * Write the metadata about study information to a columns file and a word map file.
-     *
-     * @param studyInfo the metadata study information
-     */
-    public void writeExportStudyInfo(I2B2StudyInfo studyInfo) {
-        writeExportStudyInfo(studyInfo, false);
-    }
-
-    /**
-     * Write the metadata about study information to a columns file and a word map file.
-     *
-     * @param studyInfo the metadata study information
-     * @param addToConceptMap whether to add this record to the concept map
-     */
-    public void writeExportStudyInfo(I2B2StudyInfo studyInfo, boolean addToConceptMap) {
-        if (addToConceptMap) {
-            writeExportConceptMap(studyInfo);
-        }
-
-        String className = studyInfo.getClass().getName();
-        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        log.info("+ " + studyInfo.getCfullname());
-        log.info("+ " + studyInfo.getNamePath());
-        log.info("+ " + studyInfo.getCname());
-        log.info("+ " + studyInfo.getCbasecode());
-        log.info("");
-    }
-
     public void setColumnsName(String columnsFileName) {
         try {
             columnsWriter = new BufferedWriter(new FileWriter(exportFilePath + columnsFileName));
@@ -166,6 +137,19 @@ public class FileExporter {
     }
 
     /**
+     * Write the concept mapping in two columns. The first column represents the tree structure as it will
+     * appear in i2b2, the second column is the original tree structure from the ODM. Concepts are separated
+     * by + symbols.
+     *
+     * @param studyInfo the metadata study information
+     */
+    public void writeExportConceptMap(I2B2StudyInfo studyInfo) {
+        writeLine(conceptMapWriter, studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
+        columnHeaders.add(studyInfo.getCname());
+        columnIds.add(studyInfo.getNamePath());
+    }
+
+    /**
      * Write the columns file: first the clinical data file name, then the path as specified in the second
      * column of the user's input concept map without the last node, then the column number and then the
      * last node of the path
@@ -184,19 +168,6 @@ public class FileExporter {
      */
     public void writeExportWordMap(I2B2StudyInfo studyInfo) {
         writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
-    }
-
-    /**
-     * Write the concept mapping in two columns. The first column represents the tree structure as it will
-     * appear in i2b2, the second column is the original tree structure from the ODM. Concepts are separated
-     * by + symbols.
-     *
-     * @param studyInfo the metadata study information
-     */
-    private void writeExportConceptMap(I2B2StudyInfo studyInfo) {
-        writeLine(conceptMapWriter, studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
-        columnHeaders.add(studyInfo.getCname());
-        columnIds.add(studyInfo.getNamePath());
     }
 
     /**
