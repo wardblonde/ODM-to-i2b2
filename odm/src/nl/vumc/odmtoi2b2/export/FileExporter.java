@@ -32,37 +32,59 @@ public class FileExporter {
     private static final Log log = LogFactory.getLog(FileExporter.class);
 
     /**
-     * The writer for writing the clinical data.
+     * The directory where the export files will be written to.
+     */
+    private final String exportFilePath;
+
+    /**
+     * The writer for exporting the clinical data.
      */
     private final BufferedWriter clinicalDataWriter;
-    private boolean writeClinicalDataHeaders;
 
-    private final String exportFilePath;
+    /**
+     * Whether the line with the clinical data headers still has to be written to file.
+     */
+    private boolean writeClinicalDataHeaders;
 
     /**
      * The writer for writing the concept map.
      */
     private BufferedWriter conceptMapWriter;
 
+    /**
+     * The column headers for the clinical data.
+     */
     private List<String> columnHeaders;
+
+    /**
+     * The column IDs (paths) for the clinical data.
+     */
     private List<String> columnIds;
+
+    /**
+     * The patient number that clinical data info records are being processed for. All data for a patient is collected
+     * and written on one line.
+     */
     private String currentPatientNumber;
+
+    /**
+     * Mapping of column ID to values for the current patient.
+     */
     private Map<String, String> patientData;
 
     /**
-     * Construct an export file.
+     * Construct a file exporter.
      *
-     * @param exportFilePath the path to the directory of the export file.
-     * @param exportFileName the name of the export file
+     * @param exportFilePath the directory for the export files.
+     * @param exportFileName the name of the export file.
      * @throws IOException when creating the file fails.
      */
     public FileExporter(String exportFilePath, String exportFileName) throws IOException {
+        this.exportFilePath = exportFilePath;
         String exportFile = exportFilePath + exportFileName;
         clinicalDataWriter = new BufferedWriter(new FileWriter(exportFile));
         writeClinicalDataHeaders = true;
-        this.exportFilePath = exportFilePath;
-        System.out.println("Writing export data to file " + exportFile);
-        System.out.println("Writing logging to file " + exportFilePath + "log.txt");
+        log.info("Writing export data to file " + exportFile);
         columnHeaders = new ArrayList<>();
         columnIds = new ArrayList<>();
         patientData = new HashMap<>();
@@ -73,7 +95,7 @@ public class FileExporter {
      *
      * @param studyInfo the metadata study information
      */
-    public void writeExportStudyInfo(final I2B2StudyInfo studyInfo) {
+    public void writeExportStudyInfo(I2B2StudyInfo studyInfo) {
         writeExportStudyInfo(studyInfo, false);
     }
 
@@ -83,18 +105,27 @@ public class FileExporter {
      * @param studyInfo the metadata study information
      * @param addToConceptMap whether to add this record to the concept map
      */
-    public void writeExportStudyInfo(final I2B2StudyInfo studyInfo, final boolean addToConceptMap) {
+    public void writeExportStudyInfo(I2B2StudyInfo studyInfo, boolean addToConceptMap) {
         if (addToConceptMap) {
             writeConceptMap(studyInfo);
         }
 
-        final String className = studyInfo.getClass().getName();
+        String className = studyInfo.getClass().getName();
         log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
         log.info("+ " + studyInfo.getCfullname());
         log.info("+ " + studyInfo.getNamePath());
         log.info("+ " + studyInfo.getCname());
         log.info("+ " + studyInfo.getCbasecode());
         log.info("");
+    }
+
+    public void setConceptMapName(String conceptMapFileName) {
+        try {
+            conceptMapWriter = new BufferedWriter(new FileWriter(exportFilePath + conceptMapFileName));
+            log.info("Writing concept map to file " + exportFilePath + conceptMapFileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -104,9 +135,8 @@ public class FileExporter {
      *
      * @param studyInfo the metadata study information
      */
-    private void writeConceptMap(final I2B2StudyInfo studyInfo) {
+    private void writeConceptMap(I2B2StudyInfo studyInfo) {
         writeLine(conceptMapWriter, studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
-        //writeLine(studyInfo.getCname());
         columnHeaders.add(studyInfo.getCname());
         columnIds.add(studyInfo.getNamePath());
     }
@@ -116,25 +146,25 @@ public class FileExporter {
      *
      * @param clinicalDataInfo the clinical data to be written to the file
      */
-    public void writeExportClinicalDataInfo(final I2B2ClinicalDataInfo clinicalDataInfo) {
-        final String className = clinicalDataInfo.getClass().getName();
-        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        log.info("+ " + clinicalDataInfo.getPatientNum());
-        log.info("+ " + clinicalDataInfo.getConceptCd());
-        log.info("+ " + clinicalDataInfo.getTvalChar());
-        log.info("");
-
+    public void writeExportClinicalDataInfo(I2B2ClinicalDataInfo clinicalDataInfo) {
         if (!clinicalDataInfo.getPatientNum().equals(currentPatientNumber)) {
             writePatientData();
             currentPatientNumber = clinicalDataInfo.getPatientNum();
         }
         patientData.put(clinicalDataInfo.getConceptCd(), clinicalDataInfo.getTvalChar());
+
+        String className = clinicalDataInfo.getClass().getName();
+        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
+        log.info("+ " + clinicalDataInfo.getPatientNum());
+        log.info("+ " + clinicalDataInfo.getConceptCd());
+        log.info("+ " + clinicalDataInfo.getTvalChar());
+        log.info("");
     }
 
     private void writePatientData() {
         if (writeClinicalDataHeaders) {
-            final StringBuilder headers = new StringBuilder();
-            for (final String columnHeader : columnHeaders) {
+            StringBuilder headers = new StringBuilder();
+            for (String columnHeader : columnHeaders) {
                 if (headers.length() > 0)
                     headers.append("\t");
                 headers.append(columnHeader);
@@ -145,7 +175,7 @@ public class FileExporter {
 
         if (!patientData.isEmpty()) {
             StringBuilder line = new StringBuilder();
-            for (final String columnId : columnIds) {
+            for (String columnId : columnIds) {
                 if (line.length() > 0)
                     line.append("\t");
                 if (patientData.containsKey(columnId))
@@ -162,11 +192,11 @@ public class FileExporter {
      * @param writer the writer to write to.
      * @param line the line to be written.
      */
-    private void writeLine(final BufferedWriter writer, final String line) {
+    private void writeLine(BufferedWriter writer, String line) {
         try {
             writer.write(line);
             writer.newLine();
-        } catch (final IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -179,7 +209,7 @@ public class FileExporter {
             writePatientData();
             clinicalDataWriter.close();
             conceptMapWriter.close();
-        } catch (final IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -190,26 +220,17 @@ public class FileExporter {
      * @param dataObject the data object that is prepared for loading to the database
      */
     @SuppressWarnings("UnusedDeclaration")
-    public void writeExportDataObject(final Object dataObject) {
-        final String className = dataObject.getClass().getName();
+    public void writeExportDataObject(Object dataObject) {
+        String className = dataObject.getClass().getName();
         log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
         try {
-            for (final Field field : dataObject.getClass().getDeclaredFields()) {
+            for (Field field : dataObject.getClass().getDeclaredFields()) {
                 field.setAccessible(true);
                 log.info("- " + field.getName() + ": " + field.get(dataObject));
             }
-        } catch (final IllegalAccessException e) {
+        } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
         log.info("");
-    }
-
-    public void setConceptMapName(final String conceptMapFileName) {
-        try {
-            conceptMapWriter = new BufferedWriter(new FileWriter(exportFilePath + conceptMapFileName));
-            System.out.println("Writing concept map to file " + exportFilePath + conceptMapFileName);
-        } catch (final IOException e) {
-            e.printStackTrace();
-        }
     }
 }
