@@ -389,8 +389,6 @@ public class I2B2ODMStudyHandler implements IConstants {
         String codeListNamePath = itemNamePath + "+" + codeListName;
 		String codeListItemToolTip = itemToolTip + "\\"	+ value;
 
-
-
 		// set c_hlevel 5 data (TranslatedText)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_5);
 		studyInfo.setCfullname(codeListItemPath);
@@ -720,7 +718,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 		return conceptCode;
 	}
-
 
     // TODO: testing other export format.
     public void closeExportWriters() {
