@@ -138,8 +138,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// TODO: create database or create other export format.
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
-		} else {
-			fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		// save child events
@@ -190,8 +188,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// TODO: create database or create other export format.
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
-		} else {
-			fileExporter.writeExportStudyInfo(studyInfo);
 		}
 
 		if (studyEventDef.getFormRef() != null) {
@@ -239,7 +235,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            fileExporter.writeExportStudyInfo(studyInfo);
+            fileExporter.writeExportColumns(studyInfo);
 		}
 
 		if (formDef.getItemGroupRef() != null) {
@@ -298,7 +294,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
-            fileExporter.writeExportStudyInfo(studyInfo, true);
+            fileExporter.writeExportConceptMap(studyInfo);
+            fileExporter.writeExportColumns(studyInfo);
 		}
 
 		if (itemDef.getCodeListRef() != null) {
@@ -407,8 +404,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// TODO: create database or create other export format.
 		if (studyDao != null) {
 			studyDao.insertMetadata(studyInfo);
-		} else {
-            fileExporter.writeExportStudyInfo(studyInfo);
 		}
 	}
 
@@ -464,9 +459,9 @@ public class I2B2ODMStudyHandler implements IConstants {
 			log.info("Inserting study metadata into i2b2");
 			long startTime = System.currentTimeMillis();
 
+            fileExporter.setConceptMapName(studyName + "_concept_map.txt");
             fileExporter.setColumnsName(studyName + "_columns.txt");
             fileExporter.setWordMapName(studyName + "_word_map.txt");
-            fileExporter.setConceptMapName(studyName + "_concept_map.txt");
             fileExporter.setClinicalDataName(studyName + "_clinical_data.txt");
 
             saveStudy(study);
