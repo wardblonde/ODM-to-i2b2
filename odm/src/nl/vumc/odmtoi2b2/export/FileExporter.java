@@ -93,7 +93,6 @@ public class FileExporter {
     public FileExporter(String exportFilePath, String exportFileName) throws IOException {
         this.exportFilePath = exportFilePath;
         String exportFile = exportFilePath + exportFileName;
-        //clinicalDataWriter = new BufferedWriter(new FileWriter(exportFile));
         writeClinicalDataHeaders = true;
         log.info("Writing export data to file " + exportFile);
         columnHeaders = new ArrayList<>();
@@ -132,8 +131,8 @@ public class FileExporter {
 
     public void setColumnsName(String columnsFileName) {
         try {
-            clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + columnsFileName));
-            log.info("Writing clinical data to file " + exportFilePath + columnsFileName);
+            columnsWriter = new BufferedWriter(new FileWriter(exportFilePath + columnsFileName));
+            log.info("Writing columns to file " + exportFilePath + columnsFileName);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -141,8 +140,8 @@ public class FileExporter {
 
     public void setWordMapName(String wordMapFileName) {
         try {
-            clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + wordMapFileName));
-            log.info("Writing clinical data to file " + exportFilePath + wordMapFileName);
+            wordMapWriter = new BufferedWriter(new FileWriter(exportFilePath + wordMapFileName));
+            log.info("Writing word mappings to file " + exportFilePath + wordMapFileName);
         } catch (IOException e) {
             e.printStackTrace();
         }
