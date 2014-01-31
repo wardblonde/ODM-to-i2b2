@@ -20,7 +20,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class supports exporting ODM data to files.
+ * This class supports exporting ODM data to four files in i2b2 format:
+ * 1) the concept map file,
+ * 2) the columns file,
+ * 3) the word map file, and
+ * 4) the clinical data file.
  *
  * @author <a href="mailto:w.blonde@vumc.nl">Ward Blondé</a>
  * @author <a href="mailto:f.debruijn@vumc.nl">Freek de Bruijn</a>
@@ -54,7 +58,6 @@ public class FileExporter {
     /**
      * The writer for exporting the clinical data file.
      */
-
     private BufferedWriter clinicalDataWriter;
 
     /**
@@ -92,12 +95,12 @@ public class FileExporter {
      */
     public FileExporter(String exportFilePath, String exportFileName) throws IOException {
         this.exportFilePath = exportFilePath;
+        this.writeClinicalDataHeaders = true;
         String exportFile = exportFilePath + exportFileName;
-        writeClinicalDataHeaders = true;
         log.info("Writing export data to file " + exportFile);
-        columnHeaders = new ArrayList<>();
-        columnIds = new ArrayList<>();
-        patientData = new HashMap<>();
+        this.columnHeaders = new ArrayList<>();
+        this.columnIds = new ArrayList<>();
+        this.patientData = new HashMap<>();
     }
 
     public void setColumnsName(String columnsFileName) {
@@ -156,6 +159,7 @@ public class FileExporter {
      *
      * @param studyInfo the metadata study information
      */
+    @SuppressWarnings("UnusedParameters")
     public void writeExportColumns(I2B2StudyInfo studyInfo) {
         writeLine(columnsWriter, "Filename\tCategory Code\tColumn Number\tData Label\tData Label Source\tControl Vocab Cd");
     }
@@ -166,6 +170,7 @@ public class FileExporter {
      *
      * @param studyInfo the metadata study information
      */
+    @SuppressWarnings("UnusedParameters")
     public void writeExportWordMap(I2B2StudyInfo studyInfo) {
         writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
     }
