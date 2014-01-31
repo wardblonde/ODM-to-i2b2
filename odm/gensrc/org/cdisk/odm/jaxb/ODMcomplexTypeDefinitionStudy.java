@@ -137,11 +137,11 @@ public class ODMcomplexTypeDefinitionStudy {
 
     /**
      * Gets the value of the oid property.
-     * 
+     *
      * @return
      *     possible object is
      *     {@link String }
-     *     
+     *
      */
     public String getOID() {
         return oid;
@@ -149,11 +149,11 @@ public class ODMcomplexTypeDefinitionStudy {
 
     /**
      * Sets the value of the oid property.
-     * 
+     *
      * @param value
      *     allowed object is
      *     {@link String }
-     *     
+     *
      */
     public void setOID(String value) {
         this.oid = value;

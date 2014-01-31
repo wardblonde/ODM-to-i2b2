@@ -62,7 +62,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
     private String exportFilePath = null;
     private boolean exportToDatabase;
-	private FileExporter fileExporter = null;
+	private FileExporter fileExporter = null;  //TODO: make this an array of fileExporters?
     private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
 
@@ -107,18 +107,13 @@ public class I2B2ODMStudyHandler implements IConstants {
     public void processODM() throws SQLException, JAXBException, ParseException, IOException {
         log.info("Start to parse ODM xml and save to i2b2");
 
-        // Testing other export format.
-        fileExporter = new FileExporter(exportFilePath + "\\", "clinical_data.txt");
-
         // build the call
         processODMStudy();
-
-        fileExporter.writeExportColumns(studyInfo);
-        fileExporter.writeExportWordMap(studyInfo);
-
         processODMClinicalData();
+        for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {     // TODO: make a fileExporter for each study
+            fileExporter.close();
+        }
 
-        fileExporter.close();
     }
 
     /*
@@ -141,10 +136,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             log.info("Inserting study metadata into i2b2");
             long startTime = System.currentTimeMillis();
 
-            fileExporter.setConceptMapName(studyName + "_concept_map.txt");
-            fileExporter.setColumnsName(studyName + "_columns.txt");
-            fileExporter.setWordMapName(studyName + "_word_map.txt");
-            fileExporter.setClinicalDataName(studyName + "_clinical_data.txt");
+            fileExporter = new FileExporter(exportFilePath + "\\", studyName);
 
             saveStudy(study);
 
@@ -324,14 +316,14 @@ public class I2B2ODMStudyHandler implements IConstants {
 			JAXBException {
 		String eventPath = studyPath + studyEventDef.getOID() + "\\";
         String eventName = studyEventDef.getName();
-        String eventNamePath = studyNamePath + "+" + eventName;
+        String eventNamePath = eventName;
 		String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 
 		// set c_hlevel 2 data (StudyEvent)
 		studyInfo.setChlevel(IConstants.C_HLEVEL_2);
 		studyInfo.setCfullname(eventPath);
         studyInfo.setCname(eventName);
-		studyInfo.setNamePath(eventNamePath);
+		studyInfo.setNamePath(studyNamePath);
 		studyInfo.setCdimcode(eventPath);
 		studyInfo.setCtooltip(eventToolTip);
 
@@ -376,7 +368,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		studyInfo.setChlevel(IConstants.C_HLEVEL_3);
 		studyInfo.setCfullname(formPath);
 		studyInfo.setCname(formName);
-		studyInfo.setNamePath(formNamePath);
+		studyInfo.setNamePath(eventNamePath);
 		studyInfo.setCdimcode(formPath);
 		studyInfo.setCtooltip(formToolTip);
 
@@ -392,8 +384,6 @@ public class I2B2ODMStudyHandler implements IConstants {
 		// insert level 3 data
 		if (exportToDatabase) {
 			studyDao.insertMetadata(studyInfo);
-		} else {
-            fileExporter.writeExportColumns(studyInfo);
 		}
 
 		if (formDef.getItemGroupRef() != null) {
@@ -434,7 +424,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		studyInfo.setChlevel(IConstants.C_HLEVEL_4);
 		studyInfo.setCfullname(itemPath);
 		studyInfo.setCname(itemName);
-		studyInfo.setNamePath(itemNamePath);
+		studyInfo.setNamePath(formNamePath);
         studyInfo.setCbasecode(itemConceptCode);
 		studyInfo.setCdimcode(itemPath);
 		studyInfo.setCtooltip(itemToolTip);
@@ -495,7 +485,7 @@ public class I2B2ODMStudyHandler implements IConstants {
         studyInfo.setChlevel(IConstants.C_HLEVEL_5);
         studyInfo.setCfullname(codeListItemPath);
         studyInfo.setCname(codeListName);
-        studyInfo.setNamePath(codeListNamePath);
+        studyInfo.setNamePath(itemNamePath);
         studyInfo.setCbasecode(itemConceptCode);
         studyInfo.setCdimcode(codeListItemPath);
         studyInfo.setCtooltip(codeListItemToolTip);
@@ -506,6 +496,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 
         if (exportToDatabase) {
             studyDao.insertMetadata(studyInfo);
+        } else {
+            fileExporter.writeExportWordMap(studyInfo);
         }
     }
 
@@ -584,7 +576,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             if (exportToDatabase) {
                 clinicalDataDao.insertObservation(clinicalDataInfo);
             } else {
-                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);
+                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);   //TODO: address the right fileExporter
             }
         } catch (SQLException e) {
             String sError = "Error inserting observation_fact record.";
