@@ -55,17 +55,16 @@ import com.recomdata.i2b2.util.ODMUtil;
 public class I2B2ODMStudyHandler implements IConstants {
 	private static final Log log = LogFactory.getLog(I2B2ODMStudyHandler.class);
 
-	// initialize ODM object
 	private ODM odm = null;
 
 	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
 	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
-    private String exportFilePath;
+    private String exportFilePath = null;
+    private boolean exportToDatabase;
 	private FileExporter fileExporter = null;
     private IStudyDao studyDao = null;
 	private IClinicalDataDao clinicalDataDao = null;
-
 
 	private Date currentDate = null;
 //	private MessageDigest messageDigest = null;
@@ -73,7 +72,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 	private MetaDataXML mdx = new MetaDataXML();
 
 	/**
-	 * Constructor to set ODM object
+	 * Constructor to create an ODM study handler object.
 	 *
 	 * @param odm Operational Data Model object
 	 * @param exportToDatabase whether to export to a database or to files.
@@ -84,9 +83,9 @@ public class I2B2ODMStudyHandler implements IConstants {
 	public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase, String exportFilePath) throws SQLException,
 			NoSuchAlgorithmException, IOException {
 		this.odm = odm;
+        this.exportToDatabase = exportToDatabase;
         this.exportFilePath = exportFilePath;
 
-		// TODO: create database or create other export format.
 		if (exportToDatabase) {
 			studyDao = new StudyDao();
 			clinicalDataDao = new ClinicalDataDao();
@@ -98,6 +97,168 @@ public class I2B2ODMStudyHandler implements IConstants {
 		currentDate = Calendar.getInstance().getTime();
 //		messageDigest = MessageDigest.getInstance("MD5");
 	}
+
+    /**
+     * Parse ODM and save data into i2b2 format.
+     *
+     * @throws JAXBException
+     * @throws ParseException
+     */
+    public void processODM() throws SQLException, JAXBException, ParseException, IOException {
+        log.info("Start to parse ODM xml and save to i2b2");
+
+        // Testing other export format.
+        fileExporter = new FileExporter(exportFilePath + "\\", "clinical_data.txt");
+
+        // build the call
+        processODMStudy();
+
+        fileExporter.writeExportColumns(studyInfo);
+        fileExporter.writeExportWordMap(studyInfo);
+
+        processODMClinicalData();
+
+        fileExporter.close();
+    }
+
+    /*
+     * This method takes ODM XML io.File obj as input and parsed by JAXB API and then traverses through ODM tree object
+     * and save data into i2b2 metadata database in i2b2 data format.
+     */
+    private void processODMStudy() throws SQLException, JAXBException, IOException {
+		// Need to traverse through the study definition to:
+		// 1) Lookup all definition values in tree nodes.
+		// 2) Set node values into i2b2 bean info and ready for populating into i2b2 database.
+        for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
+            String studyName = study.getGlobalVariables().getStudyName().getValue();
+            log.info("Processing study metadata for study " + studyName + "(OID " + study.getOID() + ")");
+            log.info("Deleting old study metadata and data");
+
+            if (exportToDatabase) {
+                studyDao.preSetupI2B2Study(study.getOID(), odm.getSourceSystem());
+            }
+
+            log.info("Inserting study metadata into i2b2");
+            long startTime = System.currentTimeMillis();
+
+            fileExporter.setConceptMapName(studyName + "_concept_map.txt");
+            fileExporter.setColumnsName(studyName + "_columns.txt");
+            fileExporter.setWordMapName(studyName + "_word_map.txt");
+            fileExporter.setClinicalDataName(studyName + "_clinical_data.txt");
+
+            saveStudy(study);
+
+            long endTime = System.currentTimeMillis();
+            log.info("Completed loading study metadata into i2b2 in " + (endTime - startTime) + " ms");
+        }
+
+		// Flush any remaining batched up records.
+        if (exportToDatabase) {
+            studyDao.executeBatch();
+        }
+    }
+
+    /*
+     * This method takes ODM XML io.File obj as input and parsed by JAXB API and the traversal through ODM tree object
+     * and save clinical data into i2b2 demo database in i2b2 data format.
+     *
+     * TODO: Keep method public in case of only want to parse demodata?
+     */
+    private void processODMClinicalData() throws JAXBException, ParseException, SQLException {
+        log.info("Parse and save ODM clinical data into i2b2...");
+
+        // Traverse through the clinical data to:
+        // 1) Lookup the concept path from odm study metadata.
+        // 2) Set patient and clinical information into observation fact.
+        if (odm.getClinicalData() == null || odm.getClinicalData().size() == 0) {
+            log.info("ODM does not contain clinical data");
+        } else {
+            for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
+                if (exportToDatabase) {
+                    clinicalDataDao.cleanupClinicalData(study.getOID(), odm.getSourceSystem());
+                }
+            }
+
+            for (ODMcomplexTypeDefinitionClinicalData clinicalData : odm.getClinicalData()) {
+                if (clinicalData.getSubjectData() != null) {
+                    String studyOID = clinicalData.getStudyOID();
+                    ODMcomplexTypeDefinitionStudy study = ODMUtil.getStudy(odm, studyOID);
+                    if (study != null) {
+                        saveStudyClinicalData(clinicalData, study, studyOID);
+                    } else {
+                        log.error("ODM does not contain study metadata for study OID " + studyOID);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Save the clinical data for a study.
+     *
+     * @param clinicalData the clinical data.
+     * @param study the study.
+     * @param studyOID the study OID.
+     * @throws JAXBException when retrieving one of the lower level ODM elements fails.
+     * @throws SQLException when export to database fails.
+     */
+    private void saveStudyClinicalData(ODMcomplexTypeDefinitionClinicalData clinicalData,
+                                       ODMcomplexTypeDefinitionStudy study, String studyOID)
+            throws JAXBException, SQLException {
+        log.info("Save Clinical data for study OID " + studyOID + " into i2b2...");
+        long startTime = System.currentTimeMillis();
+
+        // Generate a unique encounter number per subject per study to ensure that observation fact primary key is
+        // not violated.
+        int encounterNum = 0;
+
+        for (ODMcomplexTypeDefinitionSubjectData subjectData : clinicalData.getSubjectData()) {
+            if (subjectData.getStudyEventData() != null) {
+                encounterNum++;
+
+                saveStudyEventData(study, encounterNum, subjectData);
+            }
+        }
+
+        // Flush any remaining batched up observations.
+        if (exportToDatabase) {
+            clinicalDataDao.executeBatch();
+        }
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("Completed Clinical data to i2b2 for study OID " + studyOID + " in " + duration + " ms");
+    }
+
+    /**
+     * Save the clinical data for a study event.
+     *
+     * @param study the study.
+     * @param encounterNum the unique encounter number.
+     * @param subjectData the subject data that contains the study events.
+     * @throws JAXBException when retrieving one of the lower level ODM elements fails.
+     */
+    private void saveStudyEventData(ODMcomplexTypeDefinitionStudy study, int encounterNum,
+                                    ODMcomplexTypeDefinitionSubjectData subjectData)
+            throws JAXBException {
+        for (ODMcomplexTypeDefinitionStudyEventData studyEventData : subjectData.getStudyEventData()) {
+            if (studyEventData.getFormData() != null) {
+                for (ODMcomplexTypeDefinitionFormData formData : studyEventData.getFormData()) {
+                    if (formData.getItemGroupData() != null) {
+                        for (ODMcomplexTypeDefinitionItemGroupData itemGroupData : formData.getItemGroupData()) {
+                            if (itemGroupData.getItemDataGroup() != null) {
+                                for (ODMcomplexTypeDefinitionItemData itemData : itemGroupData.getItemDataGroup()) {
+                                    if (itemData.getValue() != null) {
+                                        saveItemData(study, subjectData, studyEventData, formData, itemData,
+                                                     encounterNum);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     /**
 	 * set up i2b2 metadata level 1 (Study) info into STUDY
@@ -135,8 +296,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 1 data
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
+		if (exportToDatabase) {
 			studyDao.insertMetadata(studyInfo);
 		}
 
@@ -185,8 +345,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 2 data
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
+		if (exportToDatabase) {
 			studyDao.insertMetadata(studyInfo);
 		}
 
@@ -231,8 +390,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 3 data
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
+		if (exportToDatabase) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
             fileExporter.writeExportColumns(studyInfo);
@@ -268,6 +426,8 @@ public class I2B2ODMStudyHandler implements IConstants {
 		String itemPath = formPath + itemDef.getOID() + "\\";
         String itemName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName());
         String itemNamePath = formNamePath + "+" + itemName;
+        String itemConceptCode = generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(),
+                                                     itemDef.getOID(), null);
 		String itemToolTip = formToolTip + "\\" + itemDef.getOID();
 
 		// set c_hlevel 4 data (Items)
@@ -275,7 +435,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		studyInfo.setCfullname(itemPath);
 		studyInfo.setCname(itemName);
 		studyInfo.setNamePath(itemNamePath);
-		studyInfo.setCbasecode(generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(), itemDef.getOID(), null));
+        studyInfo.setCbasecode(itemConceptCode);
 		studyInfo.setCdimcode(itemPath);
 		studyInfo.setCtooltip(itemToolTip);
 		studyInfo.setCmetadataxml(createMetadataXml(study, itemDef));
@@ -290,8 +450,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 		logStudyInfo();
 
 		// insert level 4 data
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
+		if (exportToDatabase) {
 			studyDao.insertMetadata(studyInfo);
 		} else {
             fileExporter.writeExportConceptMap(studyInfo);
@@ -303,16 +462,146 @@ public class I2B2ODMStudyHandler implements IConstants {
 
 			if (codeList != null) {
 				for (ODMcomplexTypeDefinitionCodeListItem codeListItem : codeList.getCodeListItem()) {
-					// save
-					// level 5
-					saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemNamePath, itemToolTip);
+					// save level 5
+					saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemNamePath,
+                                     itemToolTip);
 				}
 			}
 		}
 	}
 
-	private String getTranslatedDescription(
-			ODMcomplexTypeDefinitionDescription description, String lang, String defaultValue) {
+    /**
+     * set up i2b2 metadata level 5 (TranslatedText) info into STUDY
+     *
+     * @throws SQLException
+     */
+    private void saveCodeListItem(ODMcomplexTypeDefinitionStudy study,
+                                  ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
+                                  ODMcomplexTypeDefinitionFormDef formDef,
+                                  ODMcomplexTypeDefinitionItemDef itemDef,
+                                  ODMcomplexTypeDefinitionCodeListItem codeListItem, String itemPath,
+                                  String itemNamePath,
+                                  String itemToolTip) throws SQLException {
+        String value = ODMUtil.getTranslatedValue(codeListItem, "en");
+        String codedValue = codeListItem.getCodedValue();
+        String codeListItemPath = itemPath + codedValue + "\\";
+        String codeListName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()) + ": " + value;
+        String codeListNamePath = itemNamePath + "+" + codeListName;
+        String itemConceptCode = generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(),
+                                                     itemDef.getOID(), codedValue);
+        String codeListItemToolTip = itemToolTip + "\\"	+ value;
+
+        // set c_hlevel 5 data (TranslatedText)
+        studyInfo.setChlevel(IConstants.C_HLEVEL_5);
+        studyInfo.setCfullname(codeListItemPath);
+        studyInfo.setCname(codeListName);
+        studyInfo.setNamePath(codeListNamePath);
+        studyInfo.setCbasecode(itemConceptCode);
+        studyInfo.setCdimcode(codeListItemPath);
+        studyInfo.setCtooltip(codeListItemToolTip);
+        studyInfo.setCmetadataxml(null);
+        studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
+
+        logStudyInfo();
+
+        if (exportToDatabase) {
+            studyDao.insertMetadata(studyInfo);
+        }
+    }
+
+    private void saveItemData(
+            ODMcomplexTypeDefinitionStudy study,
+            ODMcomplexTypeDefinitionSubjectData subjectData,
+            ODMcomplexTypeDefinitionStudyEventData studyEventData,
+            ODMcomplexTypeDefinitionFormData formData,
+            ODMcomplexTypeDefinitionItemData itemData,
+            int encounterNum) throws JAXBException {
+
+        String itemValue = itemData.getValue();
+        ODMcomplexTypeDefinitionItemDef item = ODMUtil.getItem(study, itemData.getItemOID());
+
+        String conceptCd;
+
+        if (item.getCodeListRef() != null) {
+            clinicalDataInfo.setValTypeCd("T");
+            clinicalDataInfo.setNvalNum(null);
+
+            ODMcomplexTypeDefinitionCodeList codeList = ODMUtil.getCodeList(study, item.getCodeListRef().getCodeListOID());
+            ODMcomplexTypeDefinitionCodeListItem codeListItem = ODMUtil.getCodeListItem(codeList, itemValue);
+
+            if (codeListItem == null) {
+                log.error("Code list item for coded value: " + itemValue + " not found in code list: " + codeList.getOID());
+                return;
+            } else {
+				// Need to include the item value in the concept code, since there is a different code for each code
+				// list item.
+                conceptCd = generateConceptCode(
+                        study.getOID(),
+                        studyEventData.getStudyEventOID(),
+                        formData.getFormOID(),
+                        itemData.getItemOID(),
+                        itemValue);
+                clinicalDataInfo.setTvalChar(ODMUtil.getTranslatedValue(codeListItem, "en"));
+            }
+        } else if (ODMUtil.isNumericDataType(item.getDataType())) {
+            conceptCd = generateConceptCode(
+                    study.getOID(),
+                    studyEventData.getStudyEventOID(),
+                    formData.getFormOID(),
+                    itemData.getItemOID(),
+                    null);
+
+            clinicalDataInfo.setValTypeCd("N");
+            clinicalDataInfo.setTvalChar("E");
+            clinicalDataInfo.setNvalNum(itemValue == null || itemValue.length() == 0 ? null : new BigDecimal(itemValue));
+        } else {
+            conceptCd = generateConceptCode(
+                    study.getOID(),
+                    studyEventData.getStudyEventOID(),
+                    formData.getFormOID(),
+                    itemData.getItemOID(),
+                    null);
+
+            clinicalDataInfo.setValTypeCd("T");
+            clinicalDataInfo.setTvalChar(itemValue);
+            clinicalDataInfo.setNvalNum(null);
+        }
+
+        clinicalDataInfo.setConceptCd(conceptCd);
+        clinicalDataInfo.setEncounterNum(encounterNum);
+        clinicalDataInfo.setPatientNum(subjectData.getSubjectKey());
+        clinicalDataInfo.setUpdateDate(currentDate);
+        clinicalDataInfo.setDownloadDate(currentDate);
+        clinicalDataInfo.setImportDate(currentDate);
+        clinicalDataInfo.setStartDate(currentDate);
+        clinicalDataInfo.setEndDate(currentDate);
+
+        log.debug("Inserting clinical data: " + clinicalDataInfo);
+
+        // save observation into i2b2
+        try {
+            log.info("clinicalDataInfo: " + clinicalDataInfo);
+            if (exportToDatabase) {
+                clinicalDataDao.insertObservation(clinicalDataInfo);
+            } else {
+                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);
+            }
+        } catch (SQLException e) {
+            String sError = "Error inserting observation_fact record.";
+            sError += " study: " + study.getOID();
+            sError += " item: " + itemData.getItemOID();
+            log.error(sError, e);
+        }
+    }
+
+    private void logStudyInfo() {
+        if (log.isDebugEnabled()) {
+            log.debug("Inserting study metadata record: " + studyInfo);
+        }
+    }
+
+	private String getTranslatedDescription(ODMcomplexTypeDefinitionDescription description, String lang,
+                                            String defaultValue) {
 		if (description != null) {
 			for (ODMcomplexTypeDefinitionTranslatedText translatedText : description.getTranslatedText()) {
 				if (translatedText.getLang().equals(lang)) {
@@ -324,357 +613,16 @@ public class I2B2ODMStudyHandler implements IConstants {
 		return defaultValue;
 	}
 
-	private String createMetadataXml(ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionItemDef itemDef) throws JAXBException {
-		String metadataXml = null;
-
-		switch (itemDef.getDataType()) {
-		case INTEGER:
-			metadataXml = mdx.getIntegerMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
-
-		case FLOAT:
-		case DOUBLE:
-			metadataXml = mdx.getFloatMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
-
-		case TEXT:
-		case STRING:
-			if (itemDef.getCodeListRef() == null) {
-				metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
-			} else {
-				ODMcomplexTypeDefinitionCodeList codeList =
-					ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
-				String[] codeListValues = ODMUtil.getCodeListValues(codeList, "en");
-
-				metadataXml = mdx.getEnumMetadataXML(itemDef.getOID(), itemDef.getName(), codeListValues);
-			}
-			break;
-
-		case BOOLEAN:
-
-			break;
-
-		case DATE:
-		case TIME:
-		case DATETIME:
-			metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
-
-		default:
-		}
-
-		return metadataXml;
-	}
-
-	/**
-	 * set up i2b2 metadata level 5 (TranslatedText) info into STUDY
-	 *
-	 * @throws SQLException
-	 */
-	private void saveCodeListItem(ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			ODMcomplexTypeDefinitionFormDef formDef,
-			ODMcomplexTypeDefinitionItemDef itemDef,
-			ODMcomplexTypeDefinitionCodeListItem codeListItem, String itemPath,
-            String itemNamePath,
-			String itemToolTip) throws SQLException {
-		String value = ODMUtil.getTranslatedValue(codeListItem, "en");
-		String codedValue = codeListItem.getCodedValue();
-		String codeListItemPath = itemPath + codedValue + "\\";
-        String codeListName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()) + ": " + value;
-        String codeListNamePath = itemNamePath + "+" + codeListName;
-		String codeListItemToolTip = itemToolTip + "\\"	+ value;
-
-
-
-		// set c_hlevel 5 data (TranslatedText)
-		studyInfo.setChlevel(IConstants.C_HLEVEL_5);
-		studyInfo.setCfullname(codeListItemPath);
-		studyInfo.setCname(codeListName);
-		studyInfo.setNamePath(codeListNamePath);
-		studyInfo.setCbasecode(generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(), itemDef.getOID(), codedValue));
-		studyInfo.setCdimcode(codeListItemPath);
-		studyInfo.setCtooltip(codeListItemToolTip);
-		studyInfo.setCmetadataxml(null);
-		studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
-
-		logStudyInfo();
-
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
-			studyDao.insertMetadata(studyInfo);
-		}
-	}
-
-	/**
-	 * method to parse ODM and save data into i2b2
-	 *
-	 * @throws JAXBException
-	 * @throws ParseException
-	 */
-	public void processODM() throws SQLException, JAXBException, ParseException, IOException {
-		log.info("Start to parse ODM xml and save to i2b2");
-
-        // Testing other export format.
-        fileExporter = new FileExporter(exportFilePath + "\\", "clinical_data.txt");
-
-		// build the call
-		processODMStudy();
-
-        fileExporter.writeExportColumns(studyInfo);
-        fileExporter.writeExportWordMap(studyInfo);
-
-		processODMClinicalData();
-
-        fileExporter.close();
-	}
-
-	// TODO: testing other export format.
-	public boolean exportedToFile() {
-		return fileExporter != null;
-	}
-
-	/*
-	 * This method takes ODM XML io.File obj as input and parsed by JAXB API and
-	 * then traverses through ODM tree object and save data into i2b2 metadata
-	 * database in i2b2 data format.
-	 */
-	public void processODMStudy() throws SQLException, JAXBException, IOException {
-		/*
-		 * Need to traverse through the study definition to: 1) Lookup all
-		 * definition values in tree nodes. 2) Set node values into i2b2 bean
-		 * info and ready for populating into i2b2 database.
-		 */
-		for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
-            String studyName = study.getGlobalVariables().getStudyName().getValue();
-            log.info("Processing study metadata for study " + studyName + "(OID " + study.getOID() + ")");
-			log.info("Deleting old study metadata and data");
-
-			// TODO: create database or create other export format.
-			if (studyDao != null) {
-				studyDao.preSetupI2B2Study(study.getOID(), odm.getSourceSystem());
-			}
-
-			log.info("Inserting study metadata into i2b2");
-			long startTime = System.currentTimeMillis();
-
-            fileExporter.setConceptMapName(studyName + "_concept_map.txt");
-            fileExporter.setColumnsName(studyName + "_columns.txt");
-            fileExporter.setWordMapName(studyName + "_word_map.txt");
-            fileExporter.setClinicalDataName(studyName + "_clinical_data.txt");
-
-            saveStudy(study);
-
-			long endTime = System.currentTimeMillis();
-			log.info("Completed loading study metadata into i2b2 in " + (endTime - startTime) + " ms");
-		}
-
-		/*
-		 * Flush any remaining batched up records.
-		 */
-		// TODO: create database or create other export format.
-		if (studyDao != null) {
-			studyDao.executeBatch();
-		}
-	}
-
-	/*
-	 * This method takes ODM XML io.File obj as input and parsed by JAXB API and
-	 * the traversal through ODM tree object and save clinical data into i2b2
-	 * demo database in i2b2 data format. Keep method public in case of only want
-	 * to parse demodata.
-	 */
-	public void processODMClinicalData() throws JAXBException, ParseException, SQLException {
-		log.info("Parse and save ODM clinical data into i2b2...");
-
-		// Traverse through the clinical data to:
-		// 1) Lookup the concept path from odm study metadata.
-		// 2) Set patient and clinical information into observation fact.
-		if (odm.getClinicalData() == null && odm.getClinicalData().size() == 0) {
-			log.info("ODM does not contain clinical data");
-			return;
-		}
-
-		for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
-			// TODO: create database or create other export format.
-			if (clinicalDataDao != null) {
-				clinicalDataDao.cleanupClinicalData(study.getOID(), odm.getSourceSystem());
-			}
-		}
-
-		for (ODMcomplexTypeDefinitionClinicalData clinicalData : odm.getClinicalData()) {
-			if (clinicalData.getSubjectData() == null) {
-				continue;
-			}
-
-			log.info("Save Clinical data for study OID " + clinicalData.getStudyOID() + " into i2b2...");
-			long startTime = System.currentTimeMillis();
-
-			ODMcomplexTypeDefinitionStudy study = ODMUtil.getStudy(odm, clinicalData.getStudyOID());
-			if (study == null) {
-				log.error("ODM does not contain study metadata for study OID " + clinicalData.getStudyOID());
-
-				continue;
-			}
-
-			/*
-			 * Generate a unique encounter number per subject per study to ensure that
-			 * observation fact primary key is not violated.
-			 */
-			int encounterNum = 0;
-
-			for (ODMcomplexTypeDefinitionSubjectData subjectData : clinicalData.getSubjectData()) {
-				if (subjectData.getStudyEventData() == null) {
-					continue;
-				}
-
-				encounterNum++;
-
-				for (ODMcomplexTypeDefinitionStudyEventData studyEventData : subjectData.getStudyEventData()) {
-					if (studyEventData.getFormData() == null) {
-						continue;
-					}
-
-					for (ODMcomplexTypeDefinitionFormData formData : studyEventData.getFormData()) {
-						if (formData.getItemGroupData() == null) {
-							continue;
-						}
-
-						for (ODMcomplexTypeDefinitionItemGroupData itemGroupData : formData.getItemGroupData()) {
-							if (itemGroupData.getItemDataGroup() == null) {
-								continue;
-							}
-
-							for (ODMcomplexTypeDefinitionItemData itemData : itemGroupData.getItemDataGroup()) {
-								if (itemData.getValue() != null) {
-									saveItemData(study, subjectData, studyEventData, formData, itemData, encounterNum);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			/*
-			 * Flush any remaining batched up observations;
-			 */
-			// TODO: create database or create other export format.
-			if (clinicalDataDao != null) {
-				clinicalDataDao.executeBatch();
-			}
-
-			long endTime = System.currentTimeMillis();
-			log.info("Completed Clinical data to i2b2 for study OID " + clinicalData.getStudyOID() + " in " + (endTime - startTime) + " ms");
-		}
-	}
-
-	private void logStudyInfo() {
-		if (log.isDebugEnabled()) {
-			log.debug("Inserting study metadata record: " + studyInfo);
-		}
-	}
-
-	private void saveItemData(
-			ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionSubjectData subjectData,
-			ODMcomplexTypeDefinitionStudyEventData studyEventData,
-			ODMcomplexTypeDefinitionFormData formData,
-			ODMcomplexTypeDefinitionItemData itemData,
-			int encounterNum) throws JAXBException, ParseException, SQLException {
-
-		String itemValue = itemData.getValue();
-		ODMcomplexTypeDefinitionItemDef item = ODMUtil.getItem(study, itemData.getItemOID());
-
-		String conceptCd;
-
-		if (item.getCodeListRef() != null) {
-			clinicalDataInfo.setValTypeCd("T");
-			clinicalDataInfo.setNvalNum(null);
-
-			ODMcomplexTypeDefinitionCodeList codeList = ODMUtil.getCodeList(study, item.getCodeListRef().getCodeListOID());
-			ODMcomplexTypeDefinitionCodeListItem codeListItem = ODMUtil.getCodeListItem(codeList, itemValue);
-
-			if (codeListItem == null) {
-				log.error("Code list item for coded value: " + itemValue + " not found in code list: " + codeList.getOID());
-				return;
-			} else {
-				/*
-				 * Need to include the item value in the concept code, since there is a different code for each code list item.
-				 */
-				conceptCd = generateConceptCode(
-						study.getOID(),
-						studyEventData.getStudyEventOID(),
-						formData.getFormOID(),
-						itemData.getItemOID(),
-						itemValue);
-				clinicalDataInfo.setTvalChar(ODMUtil.getTranslatedValue(codeListItem, "en"));
-			}
-		} else if (ODMUtil.isNumericDataType(item.getDataType())) {
-			conceptCd = generateConceptCode(
-					study.getOID(),
-					studyEventData.getStudyEventOID(),
-					formData.getFormOID(),
-					itemData.getItemOID(),
-					null);
-
-			clinicalDataInfo.setValTypeCd("N");
-			clinicalDataInfo.setTvalChar("E");
-			clinicalDataInfo.setNvalNum(itemValue == null || itemValue.length() == 0 ? null : new BigDecimal(itemValue));
-		} else {
-			conceptCd = generateConceptCode(
-					study.getOID(),
-					studyEventData.getStudyEventOID(),
-					formData.getFormOID(),
-					itemData.getItemOID(),
-					null);
-
-			clinicalDataInfo.setValTypeCd("T");
-			clinicalDataInfo.setTvalChar(itemValue);
-			clinicalDataInfo.setNvalNum(null);
-		}
-
-		clinicalDataInfo.setConceptCd(conceptCd);
-		clinicalDataInfo.setEncounterNum(encounterNum);
-		clinicalDataInfo.setPatientNum(subjectData.getSubjectKey());
-		clinicalDataInfo.setUpdateDate(currentDate);
-		clinicalDataInfo.setDownloadDate(currentDate);
-		clinicalDataInfo.setImportDate(currentDate);
-		clinicalDataInfo.setStartDate(currentDate);
-		clinicalDataInfo.setEndDate(currentDate);
-
-		log.debug("Inserting clinical data: " + clinicalDataInfo);
-
-		// save observation
-		// into i2b2
-
-		try {
-		log.info("clinicalDataInfo: " + clinicalDataInfo);
-			// TODO: create database or create other export format.
-			if (clinicalDataDao != null) {
-				clinicalDataDao.insertObservation(clinicalDataInfo);
-			} else {
-                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);
-			}
-		} catch (SQLException e) {
-			String sError = "Error inserting observation_fact record.";
-			sError += " study: " + study.getOID();
-			sError += " item: " + itemData.getItemOID();
-			log.error(sError, e);
-		}
-	}
-
-	/**
-	 * Create concept code with all OIDs and make the total length less than 50
-	 * and unique
-	 *
-	 * @param studyEventOID the study event identifier.
-	 * @param formOID the form identifier.
-	 * @param itemOID  the item identifier.
-	 * @return the concept code for this item.
-	 */
-	private String generateConceptCode(String studyOID, String studyEventOID,
-			String formOID, String itemOID, String value) {
+    /**
+     * Create concept code with all OIDs and make the total length less than 50 and unique.
+     *
+     * @param studyEventOID the study event identifier.
+     * @param formOID the form identifier.
+     * @param itemOID  the item identifier.
+     * @return the concept code for this item.
+     */
+    private String generateConceptCode(String studyOID, String studyEventOID,
+                                       String formOID, String itemOID, String value) {
 //		conceptBuffer.setLength(6);
 //		conceptBuffer.append(studyOID).append("|");
 //
@@ -704,21 +652,65 @@ public class I2B2ODMStudyHandler implements IConstants {
 
         String conceptCode = studyOID + "+" + studyEventOID + "+" + formOID + "+" + itemOID /*+ "+" + value*/; //Ward
 
-		if (log.isDebugEnabled()) {
-			log.debug(new StringBuffer("Concept code ").append(conceptCode)
-					.append(" generated for studyOID=").append(studyOID)
-					.append(", studyEventOID=").append(studyEventOID)
-					.append(", formOID=").append(formOID)
-					.append(", itemOID=").append(itemOID)
-					.append(", value=").append(value).toString());
+        if (log.isDebugEnabled()) {
+            log.debug(new StringBuffer("Concept code ").append(conceptCode)
+                              .append(" generated for studyOID=").append(studyOID)
+                              .append(", studyEventOID=").append(studyEventOID)
+                              .append(", formOID=").append(formOID)
+                              .append(", itemOID=").append(itemOID)
+                              .append(", value=").append(value).toString());
+        }
+
+        return conceptCode;
+    }
+
+	private String createMetadataXml(ODMcomplexTypeDefinitionStudy study, ODMcomplexTypeDefinitionItemDef itemDef)
+            throws JAXBException {
+		String metadataXml = null;
+
+		switch (itemDef.getDataType()) {
+		case INTEGER:
+			metadataXml = mdx.getIntegerMetadataXML(itemDef.getOID(), itemDef.getName());
+			break;
+
+		case FLOAT:
+		case DOUBLE:
+			metadataXml = mdx.getFloatMetadataXML(itemDef.getOID(), itemDef.getName());
+			break;
+
+		case TEXT:
+		case STRING:
+			if (itemDef.getCodeListRef() == null) {
+				metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
+			} else {
+				ODMcomplexTypeDefinitionCodeList codeList =
+					ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
+				String[] codeListValues = ODMUtil.getCodeListValues(codeList, "en");
+
+				metadataXml = mdx.getEnumMetadataXML(itemDef.getOID(), itemDef.getName(), codeListValues);
+			}
+			break;
+
+		case DATE:
+		case TIME:
+		case DATETIME:
+			metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
+			break;
+
+        case BOOLEAN:
+		default:
 		}
 
-		return conceptCode;
+		return metadataXml;
 	}
 
+    public boolean exportedToFile() {
+        return !exportToDatabase;
+    }
 
-    // TODO: testing other export format.
     public void closeExportWriters() {
-        fileExporter.close();
+        if (!exportToDatabase) {
+            fileExporter.close();
+        }
     }
 }
