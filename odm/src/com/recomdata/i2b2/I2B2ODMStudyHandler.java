@@ -53,50 +53,50 @@ import com.recomdata.i2b2.util.ODMUtil;
  *
  */
 public class I2B2ODMStudyHandler implements IConstants {
-	private static final Log log = LogFactory.getLog(I2B2ODMStudyHandler.class);
+    private static final Log log = LogFactory.getLog(I2B2ODMStudyHandler.class);
 
-	private ODM odm = null;
+    private ODM odm = null;
 
-	private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
-	private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
+    private I2B2StudyInfo studyInfo = new I2B2StudyInfo();
+    private I2B2ClinicalDataInfo clinicalDataInfo = new I2B2ClinicalDataInfo();
 
     private String exportFilePath = null;
     private boolean exportToDatabase;
-	private FileExporter fileExporter = null;  //TODO: make this an array of fileExporters?
+    private FileExporter fileExporter = null;  //TODO: make this an array of fileExporters?
     private IStudyDao studyDao = null;
-	private IClinicalDataDao clinicalDataDao = null;
+    private IClinicalDataDao clinicalDataDao = null;
 
-	private Date currentDate = null;
-//	private MessageDigest messageDigest = null;
+    private Date currentDate = null;
+    //	private MessageDigest messageDigest = null;
 //	private StringBuffer conceptBuffer = new StringBuffer("STUDY|");
-	private MetaDataXML mdx = new MetaDataXML();
+    private MetaDataXML mdx = new MetaDataXML();
 
-	/**
-	 * Constructor to create an ODM study handler object.
-	 *
-	 * @param odm Operational Data Model object
-	 * @param exportToDatabase whether to export to a database or to files.
-	 * @param exportFilePath the path of the export file.
-	 * @throws SQLException
-	 * @throws NoSuchAlgorithmException
-	 */
-	public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase, String exportFilePath) throws SQLException,
-			NoSuchAlgorithmException, IOException {
-		this.odm = odm;
+    /**
+     * Constructor to create an ODM study handler object.
+     *
+     * @param odm Operational Data Model object
+     * @param exportToDatabase whether to export to a database or to files.
+     * @param exportFilePath the path of the export file.
+     * @throws SQLException
+     * @throws NoSuchAlgorithmException
+     */
+    public I2B2ODMStudyHandler(ODM odm, boolean exportToDatabase, String exportFilePath) throws SQLException,
+            NoSuchAlgorithmException, IOException {
+        this.odm = odm;
         this.exportToDatabase = exportToDatabase;
         this.exportFilePath = exportFilePath;
 
-		if (exportToDatabase) {
-			studyDao = new StudyDao();
-			clinicalDataDao = new ClinicalDataDao();
+        if (exportToDatabase) {
+            studyDao = new StudyDao();
+            clinicalDataDao = new ClinicalDataDao();
         }
 
-		studyInfo.setSourceSystemCd(odm.getSourceSystem());
-		clinicalDataInfo.setSourcesystemCd(odm.getSourceSystem());
+        studyInfo.setSourceSystemCd(odm.getSourceSystem());
+        clinicalDataInfo.setSourcesystemCd(odm.getSourceSystem());
 
-		currentDate = Calendar.getInstance().getTime();
+        currentDate = Calendar.getInstance().getTime();
 //		messageDigest = MessageDigest.getInstance("MD5");
-	}
+    }
 
     /**
      * Parse ODM and save data into i2b2 format.
@@ -113,7 +113,6 @@ public class I2B2ODMStudyHandler implements IConstants {
         for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {     // TODO: make a fileExporter for each study
             fileExporter.close();
         }
-
     }
 
     /*
@@ -121,9 +120,9 @@ public class I2B2ODMStudyHandler implements IConstants {
      * and save data into i2b2 metadata database in i2b2 data format.
      */
     private void processODMStudy() throws SQLException, JAXBException, IOException {
-		// Need to traverse through the study definition to:
-		// 1) Lookup all definition values in tree nodes.
-		// 2) Set node values into i2b2 bean info and ready for populating into i2b2 database.
+        // Need to traverse through the study definition to:
+        // 1) Lookup all definition values in tree nodes.
+        // 2) Set node values into i2b2 bean info and ready for populating into i2b2 database.
         for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
             String studyName = study.getGlobalVariables().getStudyName().getValue();
             log.info("Processing study metadata for study " + studyName + "(OID " + study.getOID() + ")");
@@ -136,7 +135,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             log.info("Inserting study metadata into i2b2");
             long startTime = System.currentTimeMillis();
 
-            fileExporter = new FileExporter(exportFilePath + "\\", studyName);
+            fileExporter = new FileExporter(exportFilePath + "\\", studyName);  // todo: add new file exporter to map
 
             saveStudy(study);
 
@@ -144,7 +143,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             log.info("Completed loading study metadata into i2b2 in " + (endTime - startTime) + " ms");
         }
 
-		// Flush any remaining batched up records.
+        // Flush any remaining batched up records.
         if (exportToDatabase) {
             studyDao.executeBatch();
         }
@@ -253,212 +252,212 @@ public class I2B2ODMStudyHandler implements IConstants {
     }
 
     /**
-	 * set up i2b2 metadata level 1 (Study) info into STUDY
-	 *
-	 * @throws JAXBException
-	 */
-	private void saveStudy(ODMcomplexTypeDefinitionStudy study)
-			throws SQLException, JAXBException {
-		// Need to include source system in path to avoid conflicts between servers
-		String studyKey = odm.getSourceSystem() + ":" + study.getOID();
+     * set up i2b2 metadata level 1 (Study) info into STUDY
+     *
+     * @throws JAXBException
+     */
+    private void saveStudy(ODMcomplexTypeDefinitionStudy study)
+            throws SQLException, JAXBException {
+        // Need to include source system in path to avoid conflicts between servers
+        String studyKey = odm.getSourceSystem() + ":" + study.getOID();
 
-		String studyPath = "\\" + "STUDY" + "\\" + studyKey + "\\";
+        String studyPath = "\\" + "STUDY" + "\\" + studyKey + "\\";
         String studyName = study.getGlobalVariables().getStudyName().getValue();
-		String studyToolTip = "STUDY" + "\\" + studyKey;
+        String studyToolTip = "STUDY" + "\\" + studyKey;
 
-		// set c_hlevel 1 data (Study)
-		studyInfo.setChlevel(IConstants.C_HLEVEL_1);
-		studyInfo.setCfullname(studyPath);
+        // set c_hlevel 1 data (Study)
+        studyInfo.setChlevel(IConstants.C_HLEVEL_1);
+        studyInfo.setCfullname(studyPath);
         studyInfo.setCname(studyName);
-		studyInfo.setNamePath(studyName);
-		studyInfo.setCsynonmCd(IConstants.C_SYNONYM_CD);
-		studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
-		studyInfo.setCfactTableColumn(IConstants.C_FACTTABLECOLUMN);
-		studyInfo.setCtablename(IConstants.C_TABLENAME);
-		studyInfo.setCcolumnname(IConstants.C_COLUMNNAME);
-		studyInfo.setCcolumnDatatype(IConstants.C_COLUMNDATATYPE);
-		studyInfo.setCoperator(IConstants.C_OPERATOR);
-		studyInfo.setSourceSystemCd(odm.getSourceSystem());
-		studyInfo.setUpdateDate(currentDate);
-		studyInfo.setDownloadDate(currentDate);
-		studyInfo.setImportDate(currentDate);
-		studyInfo.setCdimcode(studyPath);
-		studyInfo.setCtooltip(studyToolTip);
+        studyInfo.setNamePath(studyName);
+        studyInfo.setCsynonmCd(IConstants.C_SYNONYM_CD);
+        studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
+        studyInfo.setCfactTableColumn(IConstants.C_FACTTABLECOLUMN);
+        studyInfo.setCtablename(IConstants.C_TABLENAME);
+        studyInfo.setCcolumnname(IConstants.C_COLUMNNAME);
+        studyInfo.setCcolumnDatatype(IConstants.C_COLUMNDATATYPE);
+        studyInfo.setCoperator(IConstants.C_OPERATOR);
+        studyInfo.setSourceSystemCd(odm.getSourceSystem());
+        studyInfo.setUpdateDate(currentDate);
+        studyInfo.setDownloadDate(currentDate);
+        studyInfo.setImportDate(currentDate);
+        studyInfo.setCdimcode(studyPath);
+        studyInfo.setCtooltip(studyToolTip);
 
-		logStudyInfo();
+        logStudyInfo();
 
-		// insert level 1 data
-		if (exportToDatabase) {
-			studyDao.insertMetadata(studyInfo);
-		}
+        // insert level 1 data
+        if (exportToDatabase) {
+            studyDao.insertMetadata(studyInfo);
+        }
 
-		// save child events
-		ODMcomplexTypeDefinitionMetaDataVersion version = study.getMetaDataVersion().get(0);
+        // save child events
+        ODMcomplexTypeDefinitionMetaDataVersion version = study.getMetaDataVersion().get(0);
 
-		if (version.getProtocol().getStudyEventRef() != null) {
-			for (ODMcomplexTypeDefinitionStudyEventRef studyEventRef : version.getProtocol().getStudyEventRef()) {
-				ODMcomplexTypeDefinitionStudyEventDef studyEventDef =
-					ODMUtil.getStudyEvent(study, studyEventRef.getStudyEventOID());
+        if (version.getProtocol().getStudyEventRef() != null) {
+            for (ODMcomplexTypeDefinitionStudyEventRef studyEventRef : version.getProtocol().getStudyEventRef()) {
+                ODMcomplexTypeDefinitionStudyEventDef studyEventDef =
+                        ODMUtil.getStudyEvent(study, studyEventRef.getStudyEventOID());
 
-				saveEvent(study, studyEventDef, studyPath, studyName, studyToolTip);
-			}
-		}
-	}
+                saveEvent(study, studyEventDef, studyPath, studyName, studyToolTip);
+            }
+        }
+    }
 
     /**
-	 * set up i2b2 metadata level 2 (Event) info into STUDY
-	 *
-	 * @throws JAXBException
-	 */
-	private void saveEvent(ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			String studyPath, String studyNamePath, String studyToolTip) throws SQLException,
-			JAXBException {
-		String eventPath = studyPath + studyEventDef.getOID() + "\\";
+     * set up i2b2 metadata level 2 (Event) info into STUDY
+     *
+     * @throws JAXBException
+     */
+    private void saveEvent(ODMcomplexTypeDefinitionStudy study,
+                           ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
+                           String studyPath, String studyNamePath, String studyToolTip) throws SQLException,
+            JAXBException {
+        String eventPath = studyPath + studyEventDef.getOID() + "\\";
         String eventName = studyEventDef.getName();
         String eventNamePath = eventName;
-		String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
+        String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 
-		// set c_hlevel 2 data (StudyEvent)
-		studyInfo.setChlevel(IConstants.C_HLEVEL_2);
-		studyInfo.setCfullname(eventPath);
+        // set c_hlevel 2 data (StudyEvent)
+        studyInfo.setChlevel(IConstants.C_HLEVEL_2);
+        studyInfo.setCfullname(eventPath);
         studyInfo.setCname(eventName);
-		studyInfo.setNamePath(studyNamePath);
-		studyInfo.setCdimcode(eventPath);
-		studyInfo.setCtooltip(eventToolTip);
+        studyInfo.setNamePath(studyNamePath);
+        studyInfo.setCdimcode(eventPath);
+        studyInfo.setCtooltip(eventToolTip);
 
-		// It is a leaf node
-		if (studyEventDef.getFormRef() == null) {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
-		} else {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
-		}
+        // It is a leaf node
+        if (studyEventDef.getFormRef() == null) {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
+        } else {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
+        }
 
-		logStudyInfo();
+        logStudyInfo();
 
-		// insert level 2 data
-		if (exportToDatabase) {
-			studyDao.insertMetadata(studyInfo);
-		}
+        // insert level 2 data
+        if (exportToDatabase) {
+            studyDao.insertMetadata(studyInfo);
+        }
 
-		if (studyEventDef.getFormRef() != null) {
-			for (ODMcomplexTypeDefinitionFormRef formRef : studyEventDef.getFormRef()) {
-				ODMcomplexTypeDefinitionFormDef formDef = ODMUtil.getForm(study, formRef.getFormOID());
+        if (studyEventDef.getFormRef() != null) {
+            for (ODMcomplexTypeDefinitionFormRef formRef : studyEventDef.getFormRef()) {
+                ODMcomplexTypeDefinitionFormDef formDef = ODMUtil.getForm(study, formRef.getFormOID());
 
-				saveForm(study, studyEventDef, formDef, eventPath, eventNamePath, eventToolTip);
-			}
-		}
-	}
+                saveForm(study, studyEventDef, formDef, eventPath, eventNamePath, eventToolTip);
+            }
+        }
+    }
 
-	/**
-	 * set up i2b2 metadata level 3 (Form) info into STUDY
-	 *
-	 * @throws JAXBException
-	 */
-	private void saveForm(ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			ODMcomplexTypeDefinitionFormDef formDef, String eventPath, String eventNamePath,
-			String eventToolTip) throws SQLException, JAXBException {
-		String formPath = eventPath + formDef.getOID() + "\\";
+    /**
+     * set up i2b2 metadata level 3 (Form) info into STUDY
+     *
+     * @throws JAXBException
+     */
+    private void saveForm(ODMcomplexTypeDefinitionStudy study,
+                          ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
+                          ODMcomplexTypeDefinitionFormDef formDef, String eventPath, String eventNamePath,
+                          String eventToolTip) throws SQLException, JAXBException {
+        String formPath = eventPath + formDef.getOID() + "\\";
         String formName = getTranslatedDescription(formDef.getDescription(), "en", formDef.getName());
         String formNamePath = eventNamePath + "+" + formName;
-		String formToolTip = eventToolTip + "\\" + formDef.getOID();
+        String formToolTip = eventToolTip + "\\" + formDef.getOID();
 
-		// set c_hlevel 3 data (Form)
-		studyInfo.setChlevel(IConstants.C_HLEVEL_3);
-		studyInfo.setCfullname(formPath);
-		studyInfo.setCname(formName);
-		studyInfo.setNamePath(eventNamePath);
-		studyInfo.setCdimcode(formPath);
-		studyInfo.setCtooltip(formToolTip);
+        // set c_hlevel 3 data (Form)
+        studyInfo.setChlevel(IConstants.C_HLEVEL_3);
+        studyInfo.setCfullname(formPath);
+        studyInfo.setCname(formName);
+        studyInfo.setNamePath(eventNamePath);
+        studyInfo.setCdimcode(formPath);
+        studyInfo.setCtooltip(formToolTip);
 
-		// It is a leaf node
-		if (formDef.getItemGroupRef() == null) {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
-		} else {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
-		}
+        // It is a leaf node
+        if (formDef.getItemGroupRef() == null) {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
+        } else {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
+        }
 
-		logStudyInfo();
+        logStudyInfo();
 
-		// insert level 3 data
-		if (exportToDatabase) {
-			studyDao.insertMetadata(studyInfo);
-		}
+        // insert level 3 data
+        if (exportToDatabase) {
+            studyDao.insertMetadata(studyInfo);
+        }
 
-		if (formDef.getItemGroupRef() != null) {
-			for (ODMcomplexTypeDefinitionItemGroupRef itemGroupRef : formDef.getItemGroupRef()) {
-				ODMcomplexTypeDefinitionItemGroupDef itemGroupDef =
-					ODMUtil.getItemGroup(study, itemGroupRef.getItemGroupOID());
+        if (formDef.getItemGroupRef() != null) {
+            for (ODMcomplexTypeDefinitionItemGroupRef itemGroupRef : formDef.getItemGroupRef()) {
+                ODMcomplexTypeDefinitionItemGroupDef itemGroupDef =
+                        ODMUtil.getItemGroup(study, itemGroupRef.getItemGroupOID());
 
-				if (itemGroupDef.getItemRef() != null) {
-					for (ODMcomplexTypeDefinitionItemRef itemRef : itemGroupDef.getItemRef()) {
-						ODMcomplexTypeDefinitionItemDef itemDef = ODMUtil.getItem(study, itemRef.getItemOID());
+                if (itemGroupDef.getItemRef() != null) {
+                    for (ODMcomplexTypeDefinitionItemRef itemRef : itemGroupDef.getItemRef()) {
+                        ODMcomplexTypeDefinitionItemDef itemDef = ODMUtil.getItem(study, itemRef.getItemOID());
 
-						saveItem(study, studyEventDef, formDef, itemDef, formPath, formNamePath, formToolTip);
-					}
-				}
-			}
-		}
-	}
+                        saveItem(study, studyEventDef, formDef, itemDef, formPath, formNamePath, formToolTip);
+                    }
+                }
+            }
+        }
+    }
 
-	/**
-	 * set up i2b2 metadata level 4 (Item) info into STUDY and CONCEPT_DIMENSION
-	 *
-	 * @throws SQLException
-	 * @throws JAXBException
-	 */
-	private void saveItem(ODMcomplexTypeDefinitionStudy study,
-			ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
-			ODMcomplexTypeDefinitionFormDef formDef,
-			ODMcomplexTypeDefinitionItemDef itemDef, String formPath, String formNamePath,
-			String formToolTip) throws SQLException, JAXBException {
-		String itemPath = formPath + itemDef.getOID() + "\\";
+    /**
+     * set up i2b2 metadata level 4 (Item) info into STUDY and CONCEPT_DIMENSION
+     *
+     * @throws SQLException
+     * @throws JAXBException
+     */
+    private void saveItem(ODMcomplexTypeDefinitionStudy study,
+                          ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
+                          ODMcomplexTypeDefinitionFormDef formDef,
+                          ODMcomplexTypeDefinitionItemDef itemDef, String formPath, String formNamePath,
+                          String formToolTip) throws SQLException, JAXBException {
+        String itemPath = formPath + itemDef.getOID() + "\\";
         String itemName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName());
         String itemNamePath = formNamePath + "+" + itemName;
         String itemConceptCode = generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(),
                                                      itemDef.getOID(), null);
-		String itemToolTip = formToolTip + "\\" + itemDef.getOID();
+        String itemToolTip = formToolTip + "\\" + itemDef.getOID();
 
-		// set c_hlevel 4 data (Items)
-		studyInfo.setChlevel(IConstants.C_HLEVEL_4);
-		studyInfo.setCfullname(itemPath);
-		studyInfo.setCname(itemName);
-		studyInfo.setNamePath(formNamePath);
+        // set c_hlevel 4 data (Items)
+        studyInfo.setChlevel(IConstants.C_HLEVEL_4);
+        studyInfo.setCfullname(itemPath);
+        studyInfo.setCname(itemName);
+        studyInfo.setNamePath(formNamePath);
         studyInfo.setCbasecode(itemConceptCode);
-		studyInfo.setCdimcode(itemPath);
-		studyInfo.setCtooltip(itemToolTip);
-		studyInfo.setCmetadataxml(createMetadataXml(study, itemDef));
+        studyInfo.setCdimcode(itemPath);
+        studyInfo.setCtooltip(itemToolTip);
+        studyInfo.setCmetadataxml(createMetadataXml(study, itemDef));
 
-		// It is a leaf node
-		if (itemDef.getCodeListRef() == null) {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
-		} else {
-			studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
-		}
+        // It is a leaf node
+        if (itemDef.getCodeListRef() == null) {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
+        } else {
+            studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_FOLDER);
+        }
 
-		logStudyInfo();
+        logStudyInfo();
 
-		// insert level 4 data
-		if (exportToDatabase) {
-			studyDao.insertMetadata(studyInfo);
-		} else {
+        // insert level 4 data
+        if (exportToDatabase) {
+            studyDao.insertMetadata(studyInfo);
+        } else {
             fileExporter.writeExportConceptMap(studyInfo);
             fileExporter.writeExportColumns(studyInfo);
-		}
+        }
 
-		if (itemDef.getCodeListRef() != null) {
-			ODMcomplexTypeDefinitionCodeList codeList = ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
+        if (itemDef.getCodeListRef() != null) {
+            ODMcomplexTypeDefinitionCodeList codeList = ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
 
-			if (codeList != null) {
-				for (ODMcomplexTypeDefinitionCodeListItem codeListItem : codeList.getCodeListItem()) {
-					// save level 5
-					saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemNamePath,
+            if (codeList != null) {
+                for (ODMcomplexTypeDefinitionCodeListItem codeListItem : codeList.getCodeListItem()) {
+                    // save level 5
+                    saveCodeListItem(study, studyEventDef, formDef, itemDef, codeListItem, itemPath, itemNamePath,
                                      itemToolTip);
-				}
-			}
-		}
-	}
+                }
+            }
+        }
+    }
 
     /**
      * set up i2b2 metadata level 5 (TranslatedText) info into STUDY
@@ -525,8 +524,8 @@ public class I2B2ODMStudyHandler implements IConstants {
                 log.error("Code list item for coded value: " + itemValue + " not found in code list: " + codeList.getOID());
                 return;
             } else {
-				// Need to include the item value in the concept code, since there is a different code for each code
-				// list item.
+                // Need to include the item value in the concept code, since there is a different code for each code
+                // list item.
                 conceptCd = generateConceptCode(
                         study.getOID(),
                         studyEventData.getStudyEventOID(),
@@ -592,18 +591,18 @@ public class I2B2ODMStudyHandler implements IConstants {
         }
     }
 
-	private String getTranslatedDescription(ODMcomplexTypeDefinitionDescription description, String lang,
+    private String getTranslatedDescription(ODMcomplexTypeDefinitionDescription description, String lang,
                                             String defaultValue) {
-		if (description != null) {
-			for (ODMcomplexTypeDefinitionTranslatedText translatedText : description.getTranslatedText()) {
-				if (translatedText.getLang().equals(lang)) {
-					return translatedText.getValue();
-				}
-			}
-		}
+        if (description != null) {
+            for (ODMcomplexTypeDefinitionTranslatedText translatedText : description.getTranslatedText()) {
+                if (translatedText.getLang().equals(lang)) {
+                    return translatedText.getValue();
+                }
+            }
+        }
 
-		return defaultValue;
-	}
+        return defaultValue;
+    }
 
     /**
      * Create concept code with all OIDs and make the total length less than 50 and unique.
@@ -656,45 +655,45 @@ public class I2B2ODMStudyHandler implements IConstants {
         return conceptCode;
     }
 
-	private String createMetadataXml(ODMcomplexTypeDefinitionStudy study, ODMcomplexTypeDefinitionItemDef itemDef)
+    private String createMetadataXml(ODMcomplexTypeDefinitionStudy study, ODMcomplexTypeDefinitionItemDef itemDef)
             throws JAXBException {
-		String metadataXml = null;
+        String metadataXml = null;
 
-		switch (itemDef.getDataType()) {
-		case INTEGER:
-			metadataXml = mdx.getIntegerMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
+        switch (itemDef.getDataType()) {
+            case INTEGER:
+                metadataXml = mdx.getIntegerMetadataXML(itemDef.getOID(), itemDef.getName());
+                break;
 
-		case FLOAT:
-		case DOUBLE:
-			metadataXml = mdx.getFloatMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
+            case FLOAT:
+            case DOUBLE:
+                metadataXml = mdx.getFloatMetadataXML(itemDef.getOID(), itemDef.getName());
+                break;
 
-		case TEXT:
-		case STRING:
-			if (itemDef.getCodeListRef() == null) {
-				metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
-			} else {
-				ODMcomplexTypeDefinitionCodeList codeList =
-					ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
-				String[] codeListValues = ODMUtil.getCodeListValues(codeList, "en");
+            case TEXT:
+            case STRING:
+                if (itemDef.getCodeListRef() == null) {
+                    metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
+                } else {
+                    ODMcomplexTypeDefinitionCodeList codeList =
+                            ODMUtil.getCodeList(study, itemDef.getCodeListRef().getCodeListOID());
+                    String[] codeListValues = ODMUtil.getCodeListValues(codeList, "en");
 
-				metadataXml = mdx.getEnumMetadataXML(itemDef.getOID(), itemDef.getName(), codeListValues);
-			}
-			break;
+                    metadataXml = mdx.getEnumMetadataXML(itemDef.getOID(), itemDef.getName(), codeListValues);
+                }
+                break;
 
-		case DATE:
-		case TIME:
-		case DATETIME:
-			metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
-			break;
+            case DATE:
+            case TIME:
+            case DATETIME:
+                metadataXml = mdx.getStringMetadataXML(itemDef.getOID(), itemDef.getName());
+                break;
 
-        case BOOLEAN:
-		default:
-		}
+            case BOOLEAN:
+            default:
+        }
 
-		return metadataXml;
-	}
+        return metadataXml;
+    }
 
     public boolean exportedToFile() {
         return !exportToDatabase;
