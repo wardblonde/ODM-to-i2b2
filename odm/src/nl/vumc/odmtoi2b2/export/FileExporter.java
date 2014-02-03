@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class supports exporting ODM data to four files in i2b2 format:
+ * For each study, there is one FileExporter object. This class supports exporting ODM data to four files in i2b2
+ * format:
  * 1) the concept map file,
  * 2) the columns file,
  * 3) the word map file, and
@@ -41,9 +42,29 @@ public class FileExporter {
     private final String exportFilePath;
 
     /**
+     * The name of the study.
+     */
+    private final String studyName;
+
+    /**
+     * The name of the concept map file.
+     */
+    private String conceptMapFileName;
+
+    /**
+     * Whether the line with the concept map headers still has to be written to file.
+     */
+    private boolean writeConceptMapHeaders;
+
+    /**
      * The writer for writing the concept map file.
      */
     private BufferedWriter conceptMapWriter;
+
+    /**
+     * The name of the columns file.
+     */
+    private String columnsFileName;
 
     /**
      * The writer for writing the columns file.
@@ -51,19 +72,34 @@ public class FileExporter {
     private BufferedWriter columnsWriter;
 
     /**
+     * The name of the word map file.
+     */
+    private String wordMapFileName;
+
+    /**
+     * Whether the line with the word map headers still has to be written to file.
+     */
+    private boolean writeWordMapHeaders;
+
+    /**
      * The writer for writing the word map file.
      */
     private BufferedWriter wordMapWriter;
 
     /**
-     * The writer for exporting the clinical data file.
+     * The name of the clinical data file.
      */
-    private BufferedWriter clinicalDataWriter;
+    private String clinicalDataFileName;
 
     /**
      * Whether the line with the clinical data headers still has to be written to file.
      */
     private boolean writeClinicalDataHeaders;
+
+    /**
+     * The writer for exporting the clinical data file.
+     */
+    private BufferedWriter clinicalDataWriter;
 
     /**
      * The column headers for the clinical data.
@@ -82,6 +118,11 @@ public class FileExporter {
     private String currentPatientNumber;
 
     /**
+     * The current column number during the processing of the study info.
+     */
+    private int currentColumnNumber;
+
+    /**
      * Mapping of column ID to values for the current patient.
      */
     private Map<String, String> patientData;
@@ -90,20 +131,30 @@ public class FileExporter {
      * Construct a file exporter.
      *
      * @param exportFilePath the directory for the export files.
-     * @param exportFileName the name of the export file.
+     * @param studyName the name of the study.
      * @throws IOException when creating the file fails.
      */
-    public FileExporter(String exportFilePath, String exportFileName) throws IOException {
+    public FileExporter(String exportFilePath, String studyName) throws IOException {
         this.exportFilePath = exportFilePath;
+        this.studyName = studyName;
+        this.conceptMapFileName = studyName + "_concept_map.txt";
+        this.columnsFileName = studyName + "_columns.txt";
+        this.wordMapFileName = studyName + "_word_map.txt";
+        this.clinicalDataFileName = studyName + "_clinical_data.txt";
+        setConceptMapName(this.conceptMapFileName);
+        setColumnsName(this.columnsFileName);
+        setWordMapName(this.wordMapFileName);
+        setClinicalDataName(this.clinicalDataFileName);
+        this.writeConceptMapHeaders = true;
+        this.writeWordMapHeaders = true;
         this.writeClinicalDataHeaders = true;
-        String exportFile = exportFilePath + exportFileName;
-        log.info("Writing export data to file " + exportFile);
+        this.currentColumnNumber = 1;
         this.columnHeaders = new ArrayList<>();
         this.columnIds = new ArrayList<>();
         this.patientData = new HashMap<>();
     }
 
-    public void setColumnsName(String columnsFileName) {
+    private void setColumnsName(String columnsFileName) {
         try {
             columnsWriter = new BufferedWriter(new FileWriter(exportFilePath + columnsFileName));
             log.info("Writing columns to file " + exportFilePath + columnsFileName);
@@ -112,7 +163,7 @@ public class FileExporter {
         }
     }
 
-    public void setWordMapName(String wordMapFileName) {
+    private void setWordMapName(String wordMapFileName) {
         try {
             wordMapWriter = new BufferedWriter(new FileWriter(exportFilePath + wordMapFileName));
             log.info("Writing word mappings to file " + exportFilePath + wordMapFileName);
@@ -121,7 +172,7 @@ public class FileExporter {
         }
     }
 
-    public void setConceptMapName(String conceptMapFileName) {
+    private void setConceptMapName(String conceptMapFileName) {
         try {
             conceptMapWriter = new BufferedWriter(new FileWriter(exportFilePath + conceptMapFileName));
             log.info("Writing concept map to file " + exportFilePath + conceptMapFileName);
@@ -130,7 +181,7 @@ public class FileExporter {
         }
     }
 
-    public void setClinicalDataName(String clinicalDataFileName) {
+    private void setClinicalDataName(String clinicalDataFileName) {
         try {
             clinicalDataWriter = new BufferedWriter(new FileWriter(exportFilePath + clinicalDataFileName));
             log.info("Writing clinical data to file " + exportFilePath + clinicalDataFileName);
@@ -147,21 +198,35 @@ public class FileExporter {
      * @param studyInfo the metadata study information
      */
     public void writeExportConceptMap(I2B2StudyInfo studyInfo) {
-        writeLine(conceptMapWriter, studyInfo.getNamePath() + "\t" + studyInfo.getNamePath());
+        if (writeConceptMapHeaders) {
+            writeLine(conceptMapWriter, "EDC_path\ttranSMART_path\tvocabulary_term");
+            writeConceptMapHeaders = false;
+        }
+
+        writeLine(conceptMapWriter, studyInfo.getNamePath() + "+" + studyInfo.getCname() + "\t"
+                                    + studyInfo.getNamePath() + "+" + studyInfo.getCname() + "\t");
         columnHeaders.add(studyInfo.getCname());
         columnIds.add(studyInfo.getNamePath());
     }
 
     /**
-     * Write the columns file: first the clinical data file name, then the path as specified in the second
-     * column of the user's input concept map without the last node, then the column number and then the
-     * last node of the path
+     * Write the columns file: first the clinical data file name, then the path as specified in the second column of the
+     * user's input concept map without the last node, then the column number and then the last node of the path.
+     * todo: update comment above (user's input concept map: in manual mode; empty columns at the end).
      *
      * @param studyInfo the metadata study information
      */
-    @SuppressWarnings("UnusedParameters")
     public void writeExportColumns(I2B2StudyInfo studyInfo) {
-        writeLine(columnsWriter, "Filename\tCategory Code\tColumn Number\tData Label\tData Label Source\tControl Vocab Cd");
+        if (currentColumnNumber == 1) {
+            writeLine(columnsWriter, "Filename\tCategory Code\tColumn Number\tData Label\tData Label Source\t"
+                                     + "Control Vocab Cd");
+            // This first data line is required by tranSMART. The data in the first study info object is ignored.
+            writeLine(columnsWriter, clinicalDataFileName + "\t\t1\tSUBJ_ID\t\t");
+        } else {
+            writeLine(columnsWriter, clinicalDataFileName + "\t" + studyInfo.getNamePath() + "\t" +
+                                     currentColumnNumber + "\t" + studyInfo.getCname() + "\t\t" );
+        }
+        currentColumnNumber++;
     }
 
     /**
@@ -172,7 +237,11 @@ public class FileExporter {
      */
     @SuppressWarnings("UnusedParameters")
     public void writeExportWordMap(I2B2StudyInfo studyInfo) {
-        writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
+        if (writeWordMapHeaders) {
+            writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
+            writeWordMapHeaders = false;
+        }
+        writeLine(wordMapWriter, clinicalDataFileName + "\t" + currentColumnNumber + "\t" + "\t" + studyInfo.getCname());
     }
 
     /**
@@ -188,11 +257,11 @@ public class FileExporter {
         patientData.put(clinicalDataInfo.getConceptCd(), clinicalDataInfo.getTvalChar());
 
         String className = clinicalDataInfo.getClass().getName();
-        log.info("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        log.info("+ " + clinicalDataInfo.getPatientNum());
-        log.info("+ " + clinicalDataInfo.getConceptCd());
-        log.info("+ " + clinicalDataInfo.getTvalChar());
-        log.info("");
+        log.trace("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
+        log.trace("+ " + clinicalDataInfo.getPatientNum());
+        log.trace("+ " + clinicalDataInfo.getConceptCd());
+        log.trace("+ " + clinicalDataInfo.getTvalChar());
+        log.trace("");
     }
 
     private void writePatientData() {
