@@ -72,6 +72,11 @@ public class FileExporter {
     private BufferedWriter columnsWriter;
 
     /**
+     * Is set to true right after the column number was increased.
+     */
+    private boolean increasedColumnNumber;
+
+    /**
      * The name of the word map file.
      */
     private String wordMapFileName;
@@ -85,6 +90,12 @@ public class FileExporter {
      * The writer for writing the word map file.
      */
     private BufferedWriter wordMapWriter;
+
+    /**
+     * The value that is written to the clinical data file, instead of the words in the word map file,
+     * which maps these values with words.
+     */
+    private int valueCounter;
 
     /**
      * The name of the clinical data file.
@@ -147,7 +158,9 @@ public class FileExporter {
         setClinicalDataName(this.clinicalDataFileName);
         this.writeConceptMapHeaders = true;
         this.writeWordMapHeaders = true;
+        this.valueCounter = 1;
         this.writeClinicalDataHeaders = true;
+        this.increasedColumnNumber = false;
         this.currentColumnNumber = 1;
         this.columnHeaders = new ArrayList<>();
         this.columnIds = new ArrayList<>();
@@ -227,6 +240,7 @@ public class FileExporter {
                                      currentColumnNumber + "\t" + studyInfo.getCname() + "\t\t" );
         }
         currentColumnNumber++;
+        increasedColumnNumber = true;
     }
 
     /**
@@ -235,13 +249,19 @@ public class FileExporter {
      *
      * @param studyInfo the metadata study information
      */
-    @SuppressWarnings("UnusedParameters")
+
     public void writeExportWordMap(I2B2StudyInfo studyInfo) {
         if (writeWordMapHeaders) {
             writeLine(wordMapWriter, "Filename\tColumn Number\tOriginal Data Value\tNew Data Values");
             writeWordMapHeaders = false;
         }
-        writeLine(wordMapWriter, clinicalDataFileName + "\t" + currentColumnNumber + "\t" + "\t" + studyInfo.getCname());
+        if (increasedColumnNumber) {
+            valueCounter = 1;
+            increasedColumnNumber = false;
+        } else {
+            valueCounter++;
+        }
+        writeLine(wordMapWriter, clinicalDataFileName + "\t" + (currentColumnNumber - 1) + "\t" + valueCounter + "\t" + studyInfo.getCname());
     }
 
     /**
@@ -270,7 +290,7 @@ public class FileExporter {
             for (String columnHeader : columnHeaders) {
                 if (headers.length() > 0)
                     headers.append("\t");
-                headers.append(columnHeader);
+                headers.append(studyName + "_" + columnHeader);
             }
             writeLine(clinicalDataWriter, headers.toString());
             writeClinicalDataHeaders = false;

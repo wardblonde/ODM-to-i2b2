@@ -483,13 +483,17 @@ public class I2B2ODMStudyHandler implements IConstants {
         // set c_hlevel 5 data (TranslatedText)
         studyInfo.setChlevel(IConstants.C_HLEVEL_5);
         studyInfo.setCfullname(codeListItemPath);
-        studyInfo.setCname(codeListName);
         studyInfo.setNamePath(itemNamePath);
         studyInfo.setCbasecode(itemConceptCode);
         studyInfo.setCdimcode(codeListItemPath);
         studyInfo.setCtooltip(codeListItemToolTip);
         studyInfo.setCmetadataxml(null);
         studyInfo.setCvisualAttributes(IConstants.C_VISUALATTRIBUTES_LEAF);
+        if (exportToDatabase) {
+            studyInfo.setCname(codeListName);
+        } else {
+            studyInfo.setCname(value);
+        }
 
         logStudyInfo();
 
