@@ -36,7 +36,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 	 * @param exportFilePath the path of the export file.
 	 * @throws Exception
 	 */
-	public void loadODMFile2I2B2(String odmXmlPath, String exportFilePath) throws Exception {
+	public void loadODMFile2I2B2(String odmXmlPath, String exportFilePath, String userDefinedConversionFile) throws Exception {
 		File xml = new File(odmXmlPath);
 
 		if (!xml.exists()) {
@@ -69,13 +69,15 @@ public class I2B2ODMStudyHandlerCMLClient {
 	public static void main(String[] args) {
 		try {
 			if (args.length < 2) {
-				System.out.println("Please provide the path of an ODM file to process " +
-                                   "and the path of the export directory (without slash).");
+				System.out.println("Please provide the ODM file (plus path) to process, " +
+                                   "the path of the export directory (without slash), " +
+                                   "and an optional concept mapping file (plus path).");
 				return;
 			}
 
 			String odmFilePath = args[0];
 			String exportFilePath = args[1];
+            String userDefinedConversionFile = args.length >= 3 ? args[2] : null;
 
 			if (EXPORT_TO_DATABASE) {
 				System.out.println("Initializing database connection...");
@@ -86,7 +88,7 @@ public class I2B2ODMStudyHandlerCMLClient {
 			System.out.println("Loading ODM file " + odmFilePath + " to i2b2...");
 
 			I2B2ODMStudyHandlerCMLClient client = new I2B2ODMStudyHandlerCMLClient();
-			client.loadODMFile2I2B2(odmFilePath, exportFilePath);
+			client.loadODMFile2I2B2(odmFilePath, exportFilePath, userDefinedConversionFile);
 
 			if (EXPORT_TO_DATABASE) {
 				System.out.println("Releasing database connection...");
