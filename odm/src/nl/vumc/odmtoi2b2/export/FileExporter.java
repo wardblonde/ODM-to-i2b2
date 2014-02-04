@@ -134,9 +134,19 @@ public class FileExporter {
     private int currentColumnNumber;
 
     /**
+     * The current column id during the processing of the study info.
+     */
+    private String currentColumnId;
+
+    /**
      * Mapping of column ID to values for the current patient.
      */
     private Map<String, String> patientData;
+
+    /**
+     * Mapping of (column ID + word) to values for the current patient.
+     */
+    private Map<String, String> wordMap;
 
     /**
      * Construct a file exporter.
@@ -162,9 +172,11 @@ public class FileExporter {
         this.writeClinicalDataHeaders = true;
         this.increasedColumnNumber = false;
         this.currentColumnNumber = 1;
+        this.currentColumnId = null;
         this.columnHeaders = new ArrayList<>();
         this.columnIds = new ArrayList<>();
         this.patientData = new HashMap<>();
+        this.wordMap = new HashMap<>();
     }
 
     private void setColumnsName(String columnsFileName) {
@@ -241,6 +253,7 @@ public class FileExporter {
         }
         currentColumnNumber++;
         increasedColumnNumber = true;
+        currentColumnId = studyInfo.getCfullname();
     }
 
     /**
@@ -261,6 +274,8 @@ public class FileExporter {
         } else {
             valueCounter++;
         }
+        String value = String.valueOf(valueCounter);
+        wordMap.put(currentColumnId + studyInfo.getCname(), value);
         writeLine(wordMapWriter, clinicalDataFileName + "\t" + (currentColumnNumber - 1) + "\t" + valueCounter + "\t" + studyInfo.getCname());
     }
 
@@ -270,11 +285,17 @@ public class FileExporter {
      * @param clinicalDataInfo the clinical data to be written to the file
      */
     public void writeExportClinicalDataInfo(I2B2ClinicalDataInfo clinicalDataInfo) {
+        String columnId = clinicalDataInfo.getConceptCd();
+        String wordValue = clinicalDataInfo.getTvalChar();
         if (!clinicalDataInfo.getPatientNum().equals(currentPatientNumber)) {
             writePatientData();
             currentPatientNumber = clinicalDataInfo.getPatientNum();
         }
-        patientData.put(clinicalDataInfo.getConceptCd(), clinicalDataInfo.getTvalChar());
+        if (wordMap.get(columnId + wordValue) != null) {
+            patientData.put(columnId, wordMap.get(columnId + wordValue));
+        } else {
+            patientData.put(columnId, wordValue); //fills clinical data with words from wordmap
+        }
 
         String className = clinicalDataInfo.getClass().getName();
         log.trace("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
