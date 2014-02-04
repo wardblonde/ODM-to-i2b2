@@ -212,14 +212,14 @@ public class FileExporter {
      */
     public void writeExportConceptMap(I2B2StudyInfo studyInfo) {
         if (writeConceptMapHeaders) {
-            writeLine(conceptMapWriter, "EDC_path\ttranSMART_path\tvocabulary_term");
+            writeLine(conceptMapWriter, "EDC_path\ttranSMART_path\tControl Vocab Cd");
             writeConceptMapHeaders = false;
         }
 
         writeLine(conceptMapWriter, studyInfo.getNamePath() + "+" + studyInfo.getCname() + "\t"
-                                    + studyInfo.getNamePath() + "+" + studyInfo.getCname() + "\t");
-        columnHeaders.add(studyInfo.getCname());
-        columnIds.add(studyInfo.getNamePath());
+                                  + studyInfo.getNamePath() + "+" + studyInfo.getCname() + "\t");
+        columnHeaders.add(studyName + "_" + studyInfo.getCname());
+        columnIds.add(studyInfo.getCfullname());
     }
 
     /**
@@ -278,9 +278,9 @@ public class FileExporter {
 
         String className = clinicalDataInfo.getClass().getName();
         log.trace("[I2B2ODMStudyHandler] " + className.substring(className.lastIndexOf('.') + 1) + ":");
-        log.trace("+ " + clinicalDataInfo.getPatientNum());
-        log.trace("+ " + clinicalDataInfo.getConceptCd());
-        log.trace("+ " + clinicalDataInfo.getTvalChar());
+        log.trace("+ PatientNum = " + clinicalDataInfo.getPatientNum());
+        log.trace("+ ConceptCd  = " + clinicalDataInfo.getConceptCd());
+        log.trace("+ TValChar   = " + clinicalDataInfo.getTvalChar());
         log.trace("");
     }
 
@@ -290,7 +290,7 @@ public class FileExporter {
             for (String columnHeader : columnHeaders) {
                 if (headers.length() > 0)
                     headers.append("\t");
-                headers.append(studyName + "_" + columnHeader);
+                headers.append(columnHeader);
             }
             writeLine(clinicalDataWriter, headers.toString());
             writeClinicalDataHeaders = false;

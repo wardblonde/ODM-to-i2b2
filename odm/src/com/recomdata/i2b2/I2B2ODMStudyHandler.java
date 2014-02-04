@@ -8,6 +8,7 @@ package com.recomdata.i2b2;
  */
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -67,8 +68,8 @@ public class I2B2ODMStudyHandler implements IConstants {
     private IClinicalDataDao clinicalDataDao = null;
 
     private Date currentDate = null;
-    //	private MessageDigest messageDigest = null;
-//	private StringBuffer conceptBuffer = new StringBuffer("STUDY|");
+    private MessageDigest messageDigest = null;
+	private StringBuffer conceptBuffer = new StringBuffer("STUDY|");
     private MetaDataXML mdx = new MetaDataXML();
 
     /**
@@ -95,7 +96,7 @@ public class I2B2ODMStudyHandler implements IConstants {
         clinicalDataInfo.setSourcesystemCd(odm.getSourceSystem());
 
         currentDate = Calendar.getInstance().getTime();
-//		messageDigest = MessageDigest.getInstance("MD5");
+		messageDigest = MessageDigest.getInstance("MD5");
     }
 
     /**
@@ -618,34 +619,41 @@ public class I2B2ODMStudyHandler implements IConstants {
      */
     private String generateConceptCode(String studyOID, String studyEventOID,
                                        String formOID, String itemOID, String value) {
-//		conceptBuffer.setLength(6);
-//		conceptBuffer.append(studyOID).append("|");
-//
-//		// TODO: the source system can be null?
-//        if (odm.getSourceSystem() != null) {
-//            messageDigest.update(odm.getSourceSystem().getBytes());
-//            messageDigest.update((byte) '|');
-//        }
-//        messageDigest.update(studyEventOID.getBytes());
-//        messageDigest.update((byte) '|');
-//		messageDigest.update(formOID.getBytes());
-//		messageDigest.update((byte) '|');
-//		messageDigest.update(itemOID.getBytes());
-//
-//		if (value != null) {
-//			messageDigest.update((byte) '|');
-//			messageDigest.update(value.getBytes());
-//		}
-//
-//		byte[] digest = messageDigest.digest();
-//
-//		for (int i = 0; i < digest.length; i++) {
-//			conceptBuffer.append(Integer.toHexString(0xFF & digest[i]));
-//		}
-//
-//        String conceptCode = conceptBuffer.toString();                                                   //Ward
+        String conceptCode;
+        String studyKey = odm.getSourceSystem() + ":" + studyOID;
 
-        String conceptCode = studyOID + "+" + studyEventOID + "+" + formOID + "+" + itemOID /*+ "+" + value*/; //Ward
+
+        if (exportToDatabase) {
+            conceptBuffer.setLength(6);
+            conceptBuffer.append(studyOID).append("|");
+
+            // TODO: the source system can be null?
+            if (odm.getSourceSystem() != null) {
+                messageDigest.update(odm.getSourceSystem().getBytes());
+                messageDigest.update((byte) '|');
+            }
+            messageDigest.update(studyEventOID.getBytes());
+            messageDigest.update((byte) '|');
+            messageDigest.update(formOID.getBytes());
+            messageDigest.update((byte) '|');
+            messageDigest.update(itemOID.getBytes());
+
+            if (value != null) {
+                messageDigest.update((byte) '|');
+                messageDigest.update(value.getBytes());
+            }
+
+            byte[] digest = messageDigest.digest();
+
+            for (int i = 0; i < digest.length; i++) {
+                conceptBuffer.append(Integer.toHexString(0xFF & digest[i]));
+            }
+
+            conceptCode = conceptBuffer.toString();
+        } else {
+            conceptCode = "\\STUDY\\" + studyKey + "\\" + studyEventOID + "\\" + formOID + "\\" + itemOID + "\\";
+        }
+
 
         if (log.isDebugEnabled()) {
             log.debug(new StringBuffer("Concept code ").append(conceptCode)
