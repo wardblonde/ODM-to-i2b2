@@ -111,9 +111,9 @@ public class I2B2ODMStudyHandler implements IConstants {
         // build the call
         processODMStudy();
         processODMClinicalData();
-        for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {     // TODO: make a fileExporter for each study
+        //for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {     // TODO: make a fileExporter for each study
             fileExporter.close();
-        }
+        //}
     }
 
     /*
@@ -316,7 +316,6 @@ public class I2B2ODMStudyHandler implements IConstants {
             JAXBException {
         String eventPath = studyPath + studyEventDef.getOID() + "\\";
         String eventName = studyEventDef.getName();
-        String eventNamePath = eventName;
         String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 
         // set c_hlevel 2 data (StudyEvent)
@@ -345,7 +344,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             for (ODMcomplexTypeDefinitionFormRef formRef : studyEventDef.getFormRef()) {
                 ODMcomplexTypeDefinitionFormDef formDef = ODMUtil.getForm(study, formRef.getFormOID());
 
-                saveForm(study, studyEventDef, formDef, eventPath, eventNamePath, eventToolTip);
+                saveForm(study, studyEventDef, formDef, eventPath, eventName, eventToolTip);
             }
         }
     }
@@ -476,7 +475,6 @@ public class I2B2ODMStudyHandler implements IConstants {
         String codedValue = codeListItem.getCodedValue();
         String codeListItemPath = itemPath + codedValue + "\\";
         String codeListName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName()) + ": " + value;
-        String codeListNamePath = itemNamePath + "+" + codeListName;
         String itemConceptCode = generateConceptCode(study.getOID(), studyEventDef.getOID(), formDef.getOID(),
                                                      itemDef.getOID(), codedValue);
         String codeListItemToolTip = itemToolTip + "\\"	+ value;
