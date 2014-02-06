@@ -299,8 +299,12 @@ public class I2B2ODMStudyHandler implements IConstants {
             for (ODMcomplexTypeDefinitionStudyEventRef studyEventRef : version.getProtocol().getStudyEventRef()) {
                 ODMcomplexTypeDefinitionStudyEventDef studyEventDef =
                         ODMUtil.getStudyEvent(study, studyEventRef.getStudyEventOID());
-
-                saveEvent(study, studyEventDef, studyPath, studyName, studyToolTip);
+                if (studyEventDef != null) {
+                    saveEvent(study, studyEventDef, studyPath, studyName, studyToolTip);
+                } else {
+                    log.warn("Study event definition is null. Study event reference identifier: "
+                            + studyEventRef.getStudyEventOID());
+                }
             }
         }
     }
@@ -314,7 +318,7 @@ public class I2B2ODMStudyHandler implements IConstants {
                            ODMcomplexTypeDefinitionStudyEventDef studyEventDef,
                            String studyPath, String studyNamePath, String studyToolTip) throws SQLException,
             JAXBException {
-        String eventPath = studyPath + studyEventDef.getOID() + "\\";
+        String eventPath = studyPath + studyEventDef.getOID() + "\\";   //(studyEventDef != null ? studyEventDef.getOID() : "")
         String eventName = studyEventDef.getName();
         String eventToolTip = studyToolTip + "\\" + studyEventDef.getOID();
 

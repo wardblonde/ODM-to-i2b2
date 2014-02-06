@@ -287,6 +287,9 @@ public class FileExporter {
     public void writeExportClinicalDataInfo(I2B2ClinicalDataInfo clinicalDataInfo) {
         String columnId = clinicalDataInfo.getConceptCd();
         String wordValue = clinicalDataInfo.getTvalChar();
+        if (clinicalDataInfo.getNvalNum() != null) {
+            wordValue = clinicalDataInfo.getNvalNum().toString();
+        }
         if (!clinicalDataInfo.getPatientNum().equals(currentPatientNumber)) {
             writePatientData();
             currentPatientNumber = clinicalDataInfo.getPatientNum();
