@@ -14,6 +14,8 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.bind.JAXBException;
 
@@ -63,7 +65,7 @@ public class I2B2ODMStudyHandler implements IConstants {
 
     private String exportFilePath = null;
     private boolean exportToDatabase;
-    private FileExporter fileExporter = null;  //TODO: make this an array of fileExporters?
+    private Map<String, FileExporter> fileExporters;
     private IStudyDao studyDao = null;
     private IClinicalDataDao clinicalDataDao = null;
 
@@ -86,6 +88,7 @@ public class I2B2ODMStudyHandler implements IConstants {
         this.odm = odm;
         this.exportToDatabase = exportToDatabase;
         this.exportFilePath = exportFilePath;
+        this.fileExporters = new HashMap<>();
 
         if (exportToDatabase) {
             studyDao = new StudyDao();
@@ -111,9 +114,6 @@ public class I2B2ODMStudyHandler implements IConstants {
         // build the call
         processODMStudy();
         processODMClinicalData();
-        //for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {     // TODO: make a fileExporter for each study
-            fileExporter.close();
-        //}
     }
 
     /*
@@ -136,7 +136,8 @@ public class I2B2ODMStudyHandler implements IConstants {
             log.info("Inserting study metadata into i2b2");
             long startTime = System.currentTimeMillis();
 
-            fileExporter = new FileExporter(exportFilePath + "\\", studyName);  // todo: add new file exporter to map
+            FileExporter fileExporter = new FileExporter(exportFilePath + "\\", studyName);  // todo: add new file exporter to map
+            fileExporters.put(studyName, fileExporter);
 
             saveStudy(study);
 
@@ -416,6 +417,7 @@ public class I2B2ODMStudyHandler implements IConstants {
                           ODMcomplexTypeDefinitionFormDef formDef,
                           ODMcomplexTypeDefinitionItemDef itemDef, String formPath, String formNamePath,
                           String formToolTip) throws SQLException, JAXBException {
+        String studyName = study.getGlobalVariables().getStudyName().getValue();
         String itemPath = formPath + itemDef.getOID() + "\\";
         String itemName = getTranslatedDescription(itemDef.getDescription(), "en", itemDef.getName());
         String itemNamePath = formNamePath + "+" + itemName;
@@ -446,8 +448,8 @@ public class I2B2ODMStudyHandler implements IConstants {
         if (exportToDatabase) {
             studyDao.insertMetadata(studyInfo);
         } else {
-            fileExporter.writeExportConceptMap(studyInfo);
-            fileExporter.writeExportColumns(studyInfo);
+            fileExporters.get(studyName).writeExportConceptMap(studyInfo);
+            fileExporters.get(studyName).writeExportColumns(studyInfo);
         }
 
         if (itemDef.getCodeListRef() != null) {
@@ -475,6 +477,7 @@ public class I2B2ODMStudyHandler implements IConstants {
                                   ODMcomplexTypeDefinitionCodeListItem codeListItem, String itemPath,
                                   String itemNamePath,
                                   String itemToolTip) throws SQLException {
+        String studyName = study.getGlobalVariables().getStudyName().getValue();
         String value = ODMUtil.getTranslatedValue(codeListItem, "en");
         String codedValue = codeListItem.getCodedValue();
         String codeListItemPath = itemPath + codedValue + "\\";
@@ -503,7 +506,7 @@ public class I2B2ODMStudyHandler implements IConstants {
         if (exportToDatabase) {
             studyDao.insertMetadata(studyInfo);
         } else {
-            fileExporter.writeExportWordMap(studyInfo);
+            fileExporters.get(studyName).writeExportWordMap(studyInfo);
         }
     }
 
@@ -515,6 +518,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             ODMcomplexTypeDefinitionItemData itemData,
             int encounterNum) throws JAXBException {
 
+        String studyName = study.getGlobalVariables().getStudyName().getValue();
         String itemValue = itemData.getValue();
         ODMcomplexTypeDefinitionItemDef item = ODMUtil.getItem(study, itemData.getItemOID());
 
@@ -582,7 +586,7 @@ public class I2B2ODMStudyHandler implements IConstants {
             if (exportToDatabase) {
                 clinicalDataDao.insertObservation(clinicalDataInfo);
             } else {
-                fileExporter.writeExportClinicalDataInfo(clinicalDataInfo);   //TODO: address the right fileExporter
+                fileExporters.get(studyName).writeExportClinicalDataInfo(clinicalDataInfo);
             }
         } catch (SQLException e) {
             String sError = "Error inserting observation_fact record.";
@@ -715,7 +719,9 @@ public class I2B2ODMStudyHandler implements IConstants {
 
     public void closeExportWriters() {
         if (!exportToDatabase) {
-            fileExporter.close();
+            for (ODMcomplexTypeDefinitionStudy study : odm.getStudy()) {
+                fileExporters.get(study.getGlobalVariables().getStudyName().getValue()).close();
+            }
         }
     }
 }
